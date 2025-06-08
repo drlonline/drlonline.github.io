@@ -1,0 +1,1868 @@
+import React, { useState, useEffect } from 'react';
+
+const OakmontScorecard = () => {
+  const [currentPage, setCurrentPage] = useState('setup');
+  const [gameType, setGameType] = useState('stableford');
+  const [slamsOn, setSlamsOn] = useState(false);
+  const [slamType, setSlamType] = useState('gross'); // 'gross' or 'net'
+  const [skinsType, setSkinsType] = useState('net');
+  const [gameStarted, setGameStarted] = useState(false);
+  const [startingHole, setStartingHole] = useState(1);
+  const [ctpHole, setCTPHole] = useState(0);
+  const [longDriveHole, setLongDriveHole] = useState(0);
+  const [currentHole, setCurrentHole] = useState(1);
+  
+  // Net Par specific settings
+  const [frontNineCount, setFrontNineCount] = useState(2);
+  const [backNineCount, setBackNineCount] = useState(2);
+  const [allScoresHoles, setAllScoresHoles] = useState([]);
+  
+  const [players, setPlayers] = useState([
+    { name: '', handicap: '' },
+    { name: '', handicap: '' },
+    { name: '', handicap: '' },
+    { name: '', handicap: '' },
+    { name: '', handicap: '' }
+  ]);
+  
+  const [scores, setScores] = useState(
+    Array(18).fill(null).map(() => Array(5).fill(null))
+  );
+  
+  const [ctpWon, setCTPWon] = useState(false);
+  const [longDriveWon, setLongDriveWon] = useState(false);
+  const [ctpHack, setCTPHack] = useState(false);
+  const [longDriveHack, setLongDriveHack] = useState(false);
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  const [skinWinners, setSkinWinners] = useState(Array(18).fill(null));
+  const [grossSkinWinners, setGrossSkinWinners] = useState(Array(18).fill(null));
+  const [netSkinWinners, setNetSkinWinners] = useState(Array(18).fill(null));
+  
+  const [holesCompleted, setHolesCompleted] = useState(Array(18).fill(false));
+  const [duplicateNameError, setDuplicateNameError] = useState('');
+
+  useEffect(() => {
+    setForceUpdate(prev => prev + 1);
+  }, [currentHole, scores, skinsType, holesCompleted]);
+
+  useEffect(() => {
+    for (let holeIndex = 0; holeIndex < 18; holeIndex++) {
+      calculateSkinWinner(holeIndex);
+    }
+  }, [scores, skinsType, players, holesCompleted]);
+
+  const courseData = {
+    par: [5, 4, 3, 4, 3, 4, 4, 5, 4, 4, 3, 4, 4, 4, 4, 3, 4, 5],
+    handicap: [6, 12, 16, 2, 14, 10, 18, 8, 4, 13, 15, 1, 3, 11, 5, 17, 7, 9]
+  };
+
+  const updatePlayer = (index, field, value) => {
+    const newPlayers = [...players];
+    newPlayers[index][field] = value;
+    setPlayers(newPlayers);
+    
+    if (field === 'name') {
+      setDuplicateNameError('');
+    }
+  };
+
+  const startGame = () => {
+    setDuplicateNameError('');
+    
+    const hasPlayers = players.some(p => p.name.trim() !== '');
+    if (!hasPlayers) {
+      setDuplicateNameError('Please enter at least one player name');
+      return;
+    }
+    
+    const activePlayerNames = players
+      .filter(p => p.name.trim() !== '')
+      .map(p => p.name.trim().toLowerCase());
+    
+    const duplicates = activePlayerNames.filter((name, index) => 
+      activePlayerNames.indexOf(name) !== index
+    );
+    
+    if (duplicates.length > 0) {
+      setDuplicateNameError('Duplicate player names detected. Please ensure all player names are unique.');
+      return;
+    }
+    
+    setGameStarted(true);
+    setCurrentHole(startingHole);
+    setCurrentPage('scorecard');
+    window.scrollTo(0, 0);
+  };
+
+  const updateScore = (playerIndex, value) => {
+    const newScores = [...scores];
+    newScores[currentHole - 1][playerIndex] = value;
+    setScores(newScores);
+  };
+
+  const adjustScore = (playerIndex, delta) => {
+    const holeIndex = currentHole - 1;
+    const par = courseData.par[holeIndex];
+    const currentScore = scores[holeIndex][playerIndex] || par;
+    const newScore = Math.max(1, Math.min(15, currentScore + delta));
+    updateScore(playerIndex, newScore);
+    
+    // Mark game as started when first score is adjusted
+    if (!gameStarted) {
+      setGameStarted(true);
+    }
+    
+    setTimeout(() => calculateSkinWinner(holeIndex), 0);
+  };
+
+  const getPlayerScore = (holeIndex, playerIndex) => {
+    return scores[holeIndex][playerIndex] || courseData.par[holeIndex];
+  };
+
+  const getStrokesForHole = (holeHandicap, courseHandicap) => {
+    // Handle plus handicaps (like +5) - these players add strokes
+    if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+      const plusValue = parseInt(courseHandicap.substring(1));
+      // Plus handicap players add strokes on the easiest holes
+      const easiestHoles = 18 - plusValue + 1;
+      return holeHandicap >= easiestHoles ? 1 : 0;
+    }
+    
+    const numericHandicap = parseInt(courseHandicap) || 0;
+    if (numericHandicap <= 0) return 0;
+    
+    const baseStrokes = Math.floor(numericHandicap / 18);
+    const extraStrokes = holeHandicap <= (numericHandicap % 18) ? 1 : 0;
+    return baseStrokes + extraStrokes;
+  };
+
+  const getHandicapDescription = (holeHandicap, courseHandicap) => {
+    // Handle plus handicaps
+    if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+      const plusValue = parseInt(courseHandicap.substring(1));
+      const easiestHoles = 18 - plusValue + 1;
+      const addsStroke = holeHandicap >= easiestHoles;
+      
+      if (addsStroke) {
+        return {
+          text: "Adds 1 stroke (easiest holes)",
+          color: "bg-red-500",
+          symbol: "+1"
+        };
+      } else {
+        return {
+          text: "No stroke adjustment",
+          color: "bg-gray-400",
+          symbol: "0"
+        };
+      }
+    }
+    
+    // Handle regular handicaps
+    const numericHandicap = parseInt(courseHandicap) || 0;
+    if (numericHandicap <= 0) {
+      return {
+        text: "No stroke adjustment",
+        color: "bg-gray-400",
+        symbol: "0"
+      };
+    }
+    
+    const baseStrokes = Math.floor(numericHandicap / 18);
+    const extraStrokes = holeHandicap <= (numericHandicap % 18) ? 1 : 0;
+    const totalStrokes = baseStrokes + extraStrokes;
+    
+    if (totalStrokes === 0) {
+      return {
+        text: "No stroke adjustment",
+        color: "bg-gray-400",
+        symbol: "0"
+      };
+    } else if (totalStrokes === 1) {
+      return {
+        text: "Subtracts 1 stroke",
+        color: "bg-blue-500",
+        symbol: "-1"
+      };
+    } else {
+      return {
+        text: `Subtracts ${totalStrokes} strokes`,
+        color: "bg-blue-500",
+        symbol: `-${totalStrokes}`
+      };
+    }
+  };
+
+  const calculateNetScore = (grossScore, holeHandicap, courseHandicap) => {
+    if (!grossScore) return null;
+    
+    // Handle plus handicaps - they ADD strokes to their gross score
+    if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+      const plusValue = parseInt(courseHandicap.substring(1));
+      const easiestHoles = 18 - plusValue + 1;
+      const addStrokes = holeHandicap >= easiestHoles ? 1 : 0;
+      return grossScore + addStrokes;
+    }
+    
+    // Handle empty or invalid handicaps - treat as scratch (0)
+    if (!courseHandicap || courseHandicap === '') {
+      return grossScore;
+    }
+    
+    // Regular handicaps - subtract strokes
+    const strokes = getStrokesForHole(holeHandicap, courseHandicap);
+    return grossScore - strokes;
+  };
+
+  const calculateStablefordPoints = (netScore, par) => {
+    if (netScore === null) return 0;
+    const scoreToPar = netScore - par;
+    if (scoreToPar <= -3) return 8;
+    if (scoreToPar === -2) return 5;
+    if (scoreToPar === -1) return 3;
+    if (scoreToPar === 0) return 1;
+    if (scoreToPar === 1) return 0;
+    return -1;
+  };
+
+  const getHolePoints = (holeIndex) => {
+    if (gameType === 'stableford') {
+      let holePoints = 0;
+      const par = courseData.par[holeIndex];
+      const holeHandicap = courseData.handicap[holeIndex];
+      
+      players.forEach((player, playerIndex) => {
+        if (player.name) {
+          const grossScore = scores[holeIndex][playerIndex] || par;
+          const courseHandicap = player.handicap;
+          const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+          const points = calculateStablefordPoints(netScore, par);
+          
+          if (netScore !== null) {
+            holePoints += points;
+          }
+        }
+      });
+      
+      // Add slam bonus if applicable
+      if (slamsOn) {
+        const activePlayers = players.filter(p => p.name.trim() !== '');
+        if (activePlayers.length > 0) {
+          if (slamType === 'gross') {
+            // Gross slam: all players score par or better (gross)
+            const allParOrBetter = activePlayers.every((player, i) => {
+              const playerIndex = players.findIndex(p => p.name === player.name);
+              const score = scores[holeIndex][playerIndex] || par;
+              return score <= par;
+            });
+            if (allParOrBetter) {
+              holePoints += 2;
+            }
+          } else {
+            // Net slam: all players score net par or better
+            const allNetParOrBetter = activePlayers.every((player) => {
+              const playerIndex = players.findIndex(p => p.name === player.name);
+              const grossScore = scores[holeIndex][playerIndex] || par;
+              const courseHandicap = player.handicap;
+              const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+              return netScore <= par;
+            });
+            if (allNetParOrBetter) {
+              holePoints += 2;
+            }
+          }
+        }
+      }
+      
+      if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpWon) {
+        holePoints += 2;
+      }
+      
+      if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveWon) {
+        holePoints += 2;
+      }
+      
+      if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpHack) {
+        holePoints -= 2;
+      }
+      
+      if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveHack) {
+        holePoints -= 2;
+      }
+      
+      return holePoints;
+    } else if (gameType === 'netpar') {
+      return getNetParHoleScore(holeIndex);
+    }
+    
+    return 0;
+  };
+
+  const getNetParHoleScore = (holeIndex) => {
+    const par = courseData.par[holeIndex];
+    const holeHandicap = courseData.handicap[holeIndex];
+    const holeNumber = holeIndex + 1;
+    
+    const activePlayers = players.filter(p => p.name.trim() !== '');
+    const netScores = activePlayers.map(player => {
+      const playerIndex = players.findIndex(p => p.name === player.name);
+      const grossScore = scores[holeIndex][playerIndex] || par;
+      const courseHandicap = player.handicap;
+      const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+      return netScore - par;
+    }).filter(score => score !== null);
+    
+    if (netScores.length === 0) return 0;
+    
+    let scoresToCount;
+    
+    if (allScoresHoles.includes(holeNumber)) {
+      scoresToCount = netScores.length;
+    } else if (holeNumber <= 9) {
+      scoresToCount = Math.min(frontNineCount, netScores.length);
+    } else {
+      scoresToCount = Math.min(backNineCount, netScores.length);
+    }
+    
+    const sortedScores = [...netScores].sort((a, b) => a - b);
+    const countedScores = sortedScores.slice(0, scoresToCount);
+    
+    let holeScore = countedScores.reduce((sum, score) => sum + score, 0);
+    
+    if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpWon) {
+      holeScore -= 1;
+    }
+    
+    if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveWon) {
+      holeScore -= 1;
+    }
+    
+    if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpHack) {
+      holeScore += 1;
+    }
+    
+    if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveHack) {
+      holeScore += 1;
+    }
+    
+    return holeScore;
+  };
+
+  const getCumulativePoints = () => {
+    let total = 0;
+    for (let i = 0; i < 18; i++) {
+      if (holesCompleted[i]) {
+        total += getHolePoints(i);
+      }
+    }
+    
+    return total;
+  };
+
+  const isSlam = (holeIndex) => {
+    if (!slamsOn || gameType !== 'stableford') return false;
+    
+    const par = courseData.par[holeIndex];
+    const holeHandicap = courseData.handicap[holeIndex];
+    const activePlayers = players.filter(p => p.name.trim() !== '');
+    
+    if (activePlayers.length === 0) return false;
+    
+    if (slamType === 'gross') {
+      // Gross slam: all players score par or better (gross)
+      return activePlayers.every((player) => {
+        const playerIndex = players.findIndex(p => p.name === player.name);
+        const score = scores[holeIndex][playerIndex] || par;
+        return score <= par;
+      });
+    } else {
+      // Net slam: all players score net par or better
+      return activePlayers.every((player) => {
+        const playerIndex = players.findIndex(p => p.name === player.name);
+        const grossScore = scores[holeIndex][playerIndex] || par;
+        const courseHandicap = player.handicap;
+        const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+        return netScore <= par;
+      });
+    }
+  };
+
+  const calculateSkinWinner = (holeIndex, forcedSkinsType = null) => {
+    const activePlayers = players.filter(p => p.name.trim() !== '');
+    
+    if (activePlayers.length < 2) {
+      return;
+    }
+
+    const hasScores = activePlayers.some(player => {
+      const playerIndex = players.findIndex(p => p.name === player.name);
+      return scores[holeIndex][playerIndex] !== null;
+    });
+
+    const shouldCalculate = holesCompleted[holeIndex] || hasScores;
+    
+    if (!shouldCalculate) {
+      return;
+    }
+
+    const holeHandicap = courseData.handicap[holeIndex];
+    const par = courseData.par[holeIndex];
+    
+    const playerScores = activePlayers.map(player => {
+      const playerIndex = players.findIndex(p => p.name === player.name);
+      const grossScore = scores[holeIndex][playerIndex] || par;
+      const courseHandicap = player.handicap;
+      const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+      
+      return {
+        name: player.name,
+        grossScore,
+        netScore
+      };
+    });
+
+    const bestGross = Math.min(...playerScores.map(p => p.grossScore));
+    const grossWinners = playerScores.filter(p => p.grossScore === bestGross);
+    
+    const bestNet = Math.min(...playerScores.map(p => p.netScore).filter(score => score !== null));
+    const netWinners = playerScores.filter(p => p.netScore !== null && p.netScore === bestNet);
+
+    const newSkinWinners = [...skinWinners];
+    const newGrossSkinWinners = [...grossSkinWinners];
+    const newNetSkinWinners = [...netSkinWinners];
+    
+    if (grossWinners.length === 1) {
+      newGrossSkinWinners[holeIndex] = grossWinners[0].name;
+    } else {
+      newGrossSkinWinners[holeIndex] = 'Tie';
+    }
+    
+    if (netWinners.length === 1) {
+      newNetSkinWinners[holeIndex] = netWinners[0].name;
+    } else {
+      newNetSkinWinners[holeIndex] = 'Tie';
+    }
+    
+    // Use the forced skin type if provided, otherwise use current skinsType
+    const currentSkinsType = forcedSkinsType || skinsType;
+    
+    // Set the main skinWinners based on current or forced skinsType
+    if (currentSkinsType === 'gross') {
+      newSkinWinners[holeIndex] = newGrossSkinWinners[holeIndex];
+    } else if (currentSkinsType === 'net') {
+      newSkinWinners[holeIndex] = newNetSkinWinners[holeIndex];
+    } else if (currentSkinsType === 'both') {
+      newSkinWinners[holeIndex] = newNetSkinWinners[holeIndex]; // For 'both', default to net
+    }
+    
+    setSkinWinners(newSkinWinners);
+    setGrossSkinWinners(newGrossSkinWinners);
+    setNetSkinWinners(newNetSkinWinners);
+  };
+
+  const completeHole = () => {
+    const holeIndex = currentHole - 1;
+    const par = courseData.par[holeIndex];
+    
+    const newScores = [...scores];
+    const activePlayers = players.filter(p => p.name.trim() !== '');
+    activePlayers.forEach(player => {
+      const playerIndex = players.findIndex(p => p.name === player.name);
+      if (newScores[holeIndex][playerIndex] === null) {
+        newScores[holeIndex][playerIndex] = par;
+      }
+    });
+    
+    const newHolesCompleted = [...holesCompleted];
+    newHolesCompleted[holeIndex] = true;
+    
+    setScores(newScores);
+    setHolesCompleted(newHolesCompleted);
+    
+    setTimeout(() => {
+      calculateSkinWinner(holeIndex);
+    }, 10);
+    
+    const allHolesComplete = newHolesCompleted.every(completed => completed);
+    
+    if (allHolesComplete) {
+      setTimeout(() => {
+        for (let holeIdx = 0; holeIdx < 18; holeIdx++) {
+          calculateSkinWinner(holeIdx);
+        }
+        setCurrentPage('summary');
+        window.scrollTo(0, 0);
+      }, 100);
+    } else {
+      if (currentHole === 18) {
+        if (startingHole === 1) {
+          // Don't advance
+        } else {
+          setCurrentHole(1);
+        }
+      } else {
+        setCurrentHole(currentHole + 1);
+      }
+    }
+  };
+
+  const getPlayerTotalScore = (playerIndex) => {
+    let total = 0;
+    let hasCompletedHoles = false;
+    for (let i = 0; i < 18; i++) {
+      if (holesCompleted[i]) {
+        const score = scores[i][playerIndex];
+        if (score) {
+          total += score;
+        } else {
+          total += courseData.par[i];
+        }
+        hasCompletedHoles = true;
+      }
+    }
+    return hasCompletedHoles ? total : 0;
+  };
+
+  const getPlayerNetTotal = (playerIndex) => {
+    const player = players[playerIndex];
+    const courseHandicap = player.handicap;
+    const totalScore = getPlayerTotalScore(playerIndex);
+    
+    if (totalScore === 0) return 0;
+    
+    // Handle plus handicaps
+    if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+      const plusValue = parseInt(courseHandicap.substring(1));
+      const completedHolesCount = holesCompleted.filter(Boolean).length;
+      const adjustedHandicap = Math.round((plusValue * completedHolesCount) / 18);
+      return totalScore + adjustedHandicap; // Plus handicaps ADD to gross score
+    }
+    
+    const numericHandicap = parseInt(courseHandicap) || 0;
+    const completedHolesCount = holesCompleted.filter(Boolean).length;
+    const adjustedHandicap = Math.round((numericHandicap * completedHolesCount) / 18);
+    
+    return totalScore - adjustedHandicap;
+  };
+
+  const getPlayerStablefordTotal = (playerIndex) => {
+    if (gameType !== 'stableford') return 0;
+    
+    let total = 0;
+    const player = players[playerIndex];
+    const courseHandicap = player.handicap;
+    
+    for (let i = 0; i < 18; i++) {
+      if (holesCompleted[i]) {
+        const grossScore = scores[i][playerIndex];
+        if (grossScore) {
+          const holeHandicap = courseData.handicap[i];
+          const par = courseData.par[i];
+          const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+          const points = calculateStablefordPoints(netScore, par);
+          total += points;
+        } else {
+          const holeHandicap = courseData.handicap[i];
+          const par = courseData.par[i];
+          const netScore = calculateNetScore(par, holeHandicap, courseHandicap);
+          const points = calculateStablefordPoints(netScore, par);
+          total += points;
+        }
+      }
+    }
+    
+    return total;
+  };
+
+  const getSkinCount = (playerName) => {
+    return skinWinners.filter((winner, index) => 
+      winner === playerName && holesCompleted[index]
+    ).length;
+  };
+
+  const getGrossSkinCount = (playerName) => {
+    return grossSkinWinners.filter((winner, index) => 
+      winner === playerName && holesCompleted[index]
+    ).length;
+  };
+
+  const getNetSkinCount = (playerName) => {
+    return netSkinWinners.filter((winner, index) => 
+      winner === playerName && holesCompleted[index]
+    ).length;
+  };
+
+  const recalculateAllSkins = (newSkinsType) => {
+    // Initialize fresh arrays
+    const newSkinWinners = Array(18).fill(null);
+    const newGrossSkinWinners = Array(18).fill(null);
+    const newNetSkinWinners = Array(18).fill(null);
+    
+    for (let holeIndex = 0; holeIndex < 18; holeIndex++) {
+      const activePlayers = players.filter(p => p.name.trim() !== '');
+      
+      if (activePlayers.length < 2) {
+        continue;
+      }
+
+      const hasScores = activePlayers.some(player => {
+        const playerIndex = players.findIndex(p => p.name === player.name);
+        return scores[holeIndex][playerIndex] !== null;
+      });
+
+      const shouldCalculate = holesCompleted[holeIndex] || hasScores;
+      
+      if (!shouldCalculate) {
+        continue;
+      }
+
+      const holeHandicap = courseData.handicap[holeIndex];
+      const par = courseData.par[holeIndex];
+      
+      const playerScores = activePlayers.map(player => {
+        const playerIndex = players.findIndex(p => p.name === player.name);
+        const grossScore = scores[holeIndex][playerIndex] || par;
+        const courseHandicap = player.handicap;
+        const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+        
+        return {
+          name: player.name,
+          grossScore,
+          netScore
+        };
+      });
+
+      const bestGross = Math.min(...playerScores.map(p => p.grossScore));
+      const grossWinners = playerScores.filter(p => p.grossScore === bestGross);
+      
+      const validNetScores = playerScores.map(p => p.netScore).filter(score => score !== null);
+      if (validNetScores.length > 0) {
+        const bestNet = Math.min(...validNetScores);
+        const netWinners = playerScores.filter(p => p.netScore !== null && p.netScore === bestNet);
+        
+        if (netWinners.length === 1) {
+          newNetSkinWinners[holeIndex] = netWinners[0].name;
+        } else {
+          newNetSkinWinners[holeIndex] = 'Tie';
+        }
+      }
+      
+      if (grossWinners.length === 1) {
+        newGrossSkinWinners[holeIndex] = grossWinners[0].name;
+      } else {
+        newGrossSkinWinners[holeIndex] = 'Tie';
+      }
+      
+      // Set the main skinWinners based on the new skin type
+      if (newSkinsType === 'gross') {
+        newSkinWinners[holeIndex] = newGrossSkinWinners[holeIndex];
+      } else if (newSkinsType === 'net') {
+        newSkinWinners[holeIndex] = newNetSkinWinners[holeIndex];
+      } else if (newSkinsType === 'both') {
+        newSkinWinners[holeIndex] = newNetSkinWinners[holeIndex];
+      }
+    }
+    
+    // Update all state at once
+    setSkinWinners(newSkinWinners);
+    setGrossSkinWinners(newGrossSkinWinners);
+    setNetSkinWinners(newNetSkinWinners);
+  };
+
+  const applySettings = () => {
+    // Recalculate all skins with the current settings
+    recalculateAllSkins(skinsType);
+    
+    setCurrentPage('scorecard');
+    window.scrollTo(0, 0);
+  };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentHole]);
+
+  // Add beforeunload warning to prevent accidental navigation away (works on desktop/Android)
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // Only show warning if game has started or scores have been entered
+      if (gameStarted || scores.some(holeScores => holeScores.some(score => score !== null))) {
+        event.preventDefault();
+        event.returnValue = 'Are you sure you want to leave the Oakmont Tuesday Boys Scorecard App? Your game progress may be lost.';
+        return 'Are you sure you want to leave the Oakmont Tuesday Boys Scorecard App? Your game progress may be lost.';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [gameStarted, scores]);
+
+  const resetGame = () => {
+    setCurrentPage('setup');
+    setGameType('stableford');
+    setSlamsOn(false);
+    setSlamType('gross');
+    setSkinsType('net');
+    setGameStarted(false);
+    setStartingHole(1);
+    setCTPHole(0);
+    setLongDriveHole(0);
+    setCurrentHole(1);
+    setFrontNineCount(2);
+    setBackNineCount(2);
+    setAllScoresHoles([]);
+    setPlayers([
+      { name: '', handicap: '' },
+      { name: '', handicap: '' },
+      { name: '', handicap: '' },
+      { name: '', handicap: '' },
+      { name: '', handicap: '' }
+    ]);
+    setScores(Array(18).fill(null).map(() => Array(5).fill(null)));
+    setCTPWon(false);
+    setLongDriveWon(false);
+    setCTPHack(false);
+    setLongDriveHack(false);
+    setForceUpdate(0);
+    setSkinWinners(Array(18).fill(null));
+    setGrossSkinWinners(Array(18).fill(null));
+    setNetSkinWinners(Array(18).fill(null));
+    setHolesCompleted(Array(18).fill(false));
+    setDuplicateNameError('');
+    window.scrollTo(0, 0);
+  };
+
+  const toggleAllScoresHole = (holeNumber) => {
+    setAllScoresHoles(prev => {
+      if (prev.includes(holeNumber)) {
+        return prev.filter(h => h !== holeNumber);
+      } else {
+        return [...prev, holeNumber].sort((a, b) => a - b);
+      }
+    });
+  };
+
+  if (currentPage === 'setup') {
+    return (
+      <div className="min-h-screen bg-green-50 p-4">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-center mb-2 text-green-800">
+            Oakmont Tuesday Boys
+          </h1>
+          <div className="text-center mb-6 text-green-800 text-sm">
+            Version 1.0
+          </div>
+          <h2 className="text-xl font-semibold text-center mb-6">
+            Game Setup
+          </h2>
+
+          {/* User Guide Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-3">User Guide:</label>
+            <button
+              onClick={() => {
+                setCurrentPage('guide');
+                window.scrollTo(0, 0);
+              }}
+              className="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600"
+            >
+              Display Guide
+            </button>
+          </div>
+
+          {/* Choice of Game */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-3">Choice of Game:</label>
+            <div className="flex bg-gray-200 rounded-lg p-1">
+              <button
+                onClick={() => setGameType('stableford')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  gameType === 'stableford' 
+                    ? 'bg-green-500 text-white' 
+                    : 'text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Stableford
+              </button>
+              <button
+                onClick={() => setGameType('netpar')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  gameType === 'netpar' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Net Par
+              </button>
+            </div>
+          </div>
+
+          {/* Slams Toggle (only for Stableford) */}
+          {gameType === 'stableford' && (
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-3">Slams:</label>
+              <div className="flex bg-gray-200 rounded-lg p-1 mb-3">
+                <button
+                  onClick={() => setSlamsOn(false)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    !slamsOn 
+                      ? 'bg-red-500 text-white' 
+                      : 'text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Slams Off
+                </button>
+                <button
+                  onClick={() => setSlamsOn(true)}
+                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    slamsOn 
+                      ? 'bg-green-500 text-white' 
+                      : 'text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Slams On
+                </button>
+              </div>
+              
+              {/* Slam Type Selection (only when slams are on) */}
+              {slamsOn && (
+                <div>
+                  <label className="block text-xs font-medium mb-2 text-gray-600">Slam Type:</label>
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setSlamType('gross')}
+                      className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                        slamType === 'gross' 
+                          ? 'bg-orange-500 text-white' 
+                          : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Gross Slams
+                    </button>
+                    <button
+                      onClick={() => setSlamType('net')}
+                      className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                        slamType === 'net' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Net Slams
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Net Par Settings (only for Net Par) */}
+          {gameType === 'netpar' && (
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-3">Net Par Settings:</label>
+              
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1 text-gray-600">Front Nine Scores Counted (1-5):</label>
+                <select
+                  value={frontNineCount}
+                  onChange={(e) => setFrontNineCount(parseInt(e.target.value))}
+                  className="w-full p-2 border rounded-md bg-white text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1 text-gray-600">Back Nine Scores Counted (1-5):</label>
+                <select
+                  value={backNineCount}
+                  onChange={(e) => setBackNineCount(parseInt(e.target.value))}
+                  className="w-full p-2 border rounded-md bg-white text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1 text-gray-600">All Scores Counted (select holes):</label>
+                <div className="bg-gray-50 border rounded-md p-2 max-h-32 overflow-y-auto">
+                  <div className="grid grid-cols-6 gap-1">
+                    {Array.from({length: 18}, (_, i) => {
+                      const holeNumber = i + 1;
+                      const isSelected = allScoresHoles.includes(holeNumber);
+                      return (
+                        <button
+                          key={holeNumber}
+                          onClick={() => toggleAllScoresHole(holeNumber)}
+                          className={`text-xs py-1 px-2 rounded border transition-colors ${
+                            isSelected 
+                              ? 'bg-blue-500 text-white border-blue-500' 
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                          }`}
+                        >
+                          {holeNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {allScoresHoles.length > 0 && (
+                    <div className="mt-2 text-xs text-blue-600">
+                      Selected: {allScoresHoles.join(', ')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Skins Type */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-3">Skins:</label>
+            <div className="flex bg-gray-200 rounded-lg p-1">
+              <button
+                onClick={() => setSkinsType('net')}
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                  skinsType === 'net' 
+                    ? 'bg-yellow-500 text-white' 
+                    : 'text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Net
+              </button>
+              <button
+                onClick={() => setSkinsType('gross')}
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                  skinsType === 'gross' 
+                    ? 'bg-green-500 text-white' 
+                    : 'text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Gross
+              </button>
+              <button
+                onClick={() => setSkinsType('both')}
+                className={`flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                  skinsType === 'both' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Both
+              </button>
+            </div>
+          </div>
+
+          {/* Starting Hole */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-2">Starting Hole:</label>
+            <select
+              value={startingHole}
+              onChange={(e) => setStartingHole(parseInt(e.target.value))}
+              className="w-full p-2 border rounded-md bg-white"
+            >
+              {Array.from({length: 18}, (_, i) => (
+                <option key={i+1} value={i+1}>Hole {i+1}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Closest to Pin Hole */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-2">Closest to the Pin Hole:</label>
+            <select
+              value={ctpHole}
+              onChange={(e) => setCTPHole(parseInt(e.target.value))}
+              className="w-full p-2 border rounded-md bg-white"
+            >
+              <option value={0}>None</option>
+              {Array.from({length: 18}, (_, i) => (
+                <option key={i+1} value={i+1}>Hole {i+1}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Long Drive Hole */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-2">Long Drive Hole:</label>
+            <select
+              value={longDriveHole}
+              onChange={(e) => setLongDriveHole(parseInt(e.target.value))}
+              className="w-full p-2 border rounded-md bg-white"
+            >
+              <option value={0}>None</option>
+              {Array.from({length: 18}, (_, i) => (
+                <option key={i+1} value={i+1}>Hole {i+1}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Player Setup */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-3">Players:</label>
+            
+            {duplicateNameError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+                ⚠️ {duplicateNameError}
+              </div>
+            )}
+            
+            {players.map((player, index) => (
+              <div key={index} className="mb-3">
+                <div className="text-xs font-medium mb-1 text-gray-600">
+                  Player {index + 1}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={player.name}
+                    onChange={(e) => updatePlayer(index, 'name', e.target.value)}
+                    className="flex-1 p-2 border rounded-md text-sm"
+                  />
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    placeholder="HCP"
+                    value={player.handicap}
+                    onChange={(e) => updatePlayer(index, 'handicap', e.target.value)}
+                    className="w-20 p-2 border rounded-md text-sm text-center"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={gameStarted ? applySettings : startGame}
+            className="w-full py-3 bg-green-600 text-white font-bold rounded-lg text-lg hover:bg-green-700 transition-colors mb-3"
+          >
+            {gameStarted ? 'Apply Settings & Continue' : 'Start Game'}
+          </button>
+
+          {!gameStarted && (scores.some(holeScores => holeScores.some(score => score !== null)) || holesCompleted.some(completed => completed)) && (
+            <button
+              onClick={applySettings}
+              className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg text-lg hover:bg-blue-700 transition-colors"
+            >
+              Apply Settings & Continue
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (currentPage === 'scorecard') {
+    const holeIndex = currentHole - 1;
+    const par = courseData.par[holeIndex];
+    const holeHandicap = courseData.handicap[holeIndex];
+    
+    return (
+      <div className="min-h-screen bg-green-50 p-4">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-4">
+          <div className="text-center mb-4">
+            <h1 className="text-lg font-bold text-green-800">Oakmont Tuesday Boys</h1>
+            <h2 className="text-md font-semibold">Score Entry</h2>
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-semibold mb-2">Select Hole:</label>
+            <select
+              value={currentHole}
+              onChange={(e) => setCurrentHole(parseInt(e.target.value))}
+              className="w-full p-3 border-2 border-green-500 rounded-lg bg-white text-lg font-semibold"
+            >
+              {Array.from({length: 18}, (_, i) => (
+                <option key={i+1} value={i+1}>
+                  Hole {i+1} (Par {courseData.par[i]})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="bg-green-100 rounded-lg p-3 mb-4 text-center">
+            <div className="text-2xl font-bold text-green-800">Hole {currentHole}</div>
+            <div className="text-lg">Par {par} • Handicap {holeHandicap}</div>
+            <div className="text-base font-semibold text-green-700 mt-2">
+              Current Team Score: {gameType === 'stableford' ? getCumulativePoints() : 
+               (getCumulativePoints() >= 0 ? `+${getCumulativePoints()}` : getCumulativePoints())}
+            </div>
+            <div className="text-sm text-gray-600 mt-1">
+              Holes Completed: {holesCompleted.filter(Boolean).length} / 18
+            </div>
+            {gameType === 'netpar' && allScoresHoles.includes(currentHole) && (
+              <div className="text-sm text-purple-600 font-semibold mt-1">📊 All Scores Count</div>
+            )}
+            {currentHole === ctpHole && ctpHole > 0 && (
+              <div className="text-lg text-blue-600 font-bold mt-1">
+                <span className="text-2xl">🎯</span> Closest to Pin
+              </div>
+            )}
+            {currentHole === longDriveHole && longDriveHole > 0 && (
+              <div className="text-lg text-purple-600 font-bold mt-1">
+                <span className="text-2xl">🏌️</span> Long Drive
+              </div>
+            )}
+            {skinWinners[currentHole - 1] && holesCompleted[currentHole - 1] && (
+              <div className="text-sm text-yellow-600 font-semibold mt-1">
+                🏆 Skin Winner: {skinWinners[currentHole - 1]}
+              </div>
+            )}
+            {holesCompleted[currentHole - 1] && (
+              <div className="text-sm text-green-600 font-semibold mt-1 bg-green-200 rounded px-2 py-1">
+                ✅ Hole Complete
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 mb-6">
+            {players.filter(p => p.name.trim() !== '').map((player, playerIndex) => {
+              const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+              const currentScore = getPlayerScore(holeIndex, actualPlayerIndex);
+              const courseHandicap = player.handicap;
+              const handicapInfo = getHandicapDescription(holeHandicap, courseHandicap);
+              
+              return (
+                <div key={actualPlayerIndex} className="border-2 border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <div>
+                      <div className="font-semibold text-lg">{player.name}</div>
+                      <div className="text-sm text-gray-600">
+                        HCP: {player.handicap || '0'}
+                      </div>
+                      {courseHandicap && courseHandicap !== '0' && (
+                        <div className="mt-1">
+                          <span className={`text-white px-2 py-1 rounded-full text-xs font-medium ${handicapInfo.color}`}>
+                            {handicapInfo.symbol}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {handicapInfo.text}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => adjustScore(actualPlayerIndex, -1)}
+                      disabled={currentScore <= 1}
+                      className="w-12 h-12 bg-red-500 text-white text-2xl font-bold rounded-full hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                    
+                    <div className="flex flex-col items-center">
+                      <div className="text-3xl font-bold text-green-800 bg-green-100 w-16 h-16 rounded-full flex items-center justify-center border-2 border-green-500">
+                        {currentScore}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {currentScore === par ? 'Par' : 
+                         currentScore < par ? `${par - currentScore} under` :
+                         `${currentScore - par} over`}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => adjustScore(actualPlayerIndex, 1)}
+                      disabled={currentScore >= 15}
+                      className="w-12 h-12 bg-green-500 text-white text-2xl font-bold rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {(currentHole === ctpHole || currentHole === longDriveHole) && (ctpHole > 0 || longDriveHole > 0) && (
+            <div className="mb-4 space-y-2">
+              {currentHole === ctpHole && ctpHole > 0 && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setCTPWon(!ctpWon);
+                      if (!ctpWon) setCTPHack(false);
+                    }}
+                    className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+                      ctpWon 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">🎯</span> Closest to Pin {ctpWon ? 
+                      (gameType === 'stableford' ? '(+2 Won!)' : '(-1 Won!)') : 
+                      (gameType === 'stableford' ? '(+2 points)' : '(-1 stroke)')
+                    }
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCTPHack(!ctpHack);
+                      if (!ctpHack) setCTPWon(false);
+                    }}
+                    className={`w-full py-3 rounded-lg font-bold text-lg transition-colors ${
+                      ctpHack 
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">💀</span> Hack {ctpHack ? 
+                      (gameType === 'stableford' ? '(-2 Penalty!)' : '(+1 Penalty!)') : 
+                      (gameType === 'stableford' ? '(-2 points)' : '(+1 stroke)')
+                    }
+                  </button>
+                </div>
+              )}
+              {currentHole === longDriveHole && longDriveHole > 0 && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setLongDriveWon(!longDriveWon);
+                      if (!longDriveWon) setLongDriveHack(false);
+                    }}
+                    className={`w-full py-4 rounded-lg font-bold text-lg transition-colors ${
+                      longDriveWon 
+                        ? 'bg-purple-500 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">🏌️</span> Long Drive {longDriveWon ? 
+                      (gameType === 'stableford' ? '(+2 Won!)' : '(-1 Won!)') : 
+                      (gameType === 'stableford' ? '(+2 points)' : '(-1 stroke)')
+                    }
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLongDriveHack(!longDriveHack);
+                      if (!longDriveHack) setLongDriveWon(false);
+                    }}
+                    className={`w-full py-3 rounded-lg font-bold text-lg transition-colors ${
+                      longDriveHack 
+                        ? 'bg-red-500 text-white' 
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <span className="text-2xl">💀</span> Hack {longDriveHack ? 
+                      (gameType === 'stableford' ? '(-2 Penalty!)' : '(+1 Penalty!)') : 
+                      (gameType === 'stableford' ? '(-2 points)' : '(+1 stroke)')
+                    }
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mb-4">
+            <button
+              onClick={completeHole}
+              className="w-full py-4 rounded-lg font-bold text-lg transition-colors bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {(() => {
+                const allOtherHolesComplete = holesCompleted.filter((completed, index) => index !== currentHole - 1).every(completed => completed);
+                const currentHoleComplete = holesCompleted[currentHole - 1];
+                
+                if (allOtherHolesComplete && !currentHoleComplete) {
+                  return '🏁 Complete Round & Go To Summary';
+                } else if (currentHoleComplete) {
+                  return '💾 Save & Continue';
+                } else {
+                  return '🏌️ Complete Hole & Continue';
+                }
+              })()}
+            </button>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setCurrentPage('setup');
+                window.scrollTo(0, 0);
+              }}
+              className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              Settings
+            </button>
+            <button
+              onClick={resetGame}
+              className="flex-1 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              New Game
+            </button>
+            <button
+              onClick={() => {
+                for (let holeIndex = 0; holeIndex < 18; holeIndex++) {
+                  calculateSkinWinner(holeIndex);
+                }
+                setCurrentPage('summary');
+                window.scrollTo(0, 0);
+              }}
+              className="flex-1 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              View Summary
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentPage === 'guide') {
+    return (
+      <div className="min-h-screen bg-green-50 p-4">
+        <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+          <h1 className="text-2xl font-bold text-center mb-6 text-green-800">
+            Oakmont Tuesday Boys - User Guide
+          </h1>
+          
+          <div className="prose prose-sm max-w-none">
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 italic mb-2">
+                <strong>General Note:</strong> This is a web-based app, so connection to the internet via WiFi or cell data is required. If regular use of the app is expected, user should bookmark the app web address via the Share button on your mobile device.
+              </p>
+              <div className="bg-yellow-100 border-l-4 border-yellow-500 p-3 rounded-r-lg">
+                <p className="text-sm text-yellow-800 font-semibold">
+                  ⚠️ <strong>Important:</strong> When using the app during a game, avoid using your browser's back button or refreshing the page, as this may cause you to lose your scorecard data.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3 text-green-700">Game Setup</h3>
+              <p className="text-sm mb-2">Default values are indicated in <strong>bold font</strong>:</p>
+              <ul className="text-sm space-y-2 pl-4">
+                <li><strong>Choice of game:</strong> <strong>Stableford</strong> (AKA Par Points) or Net Par (AKA Better Ball)</li>
+                <li><strong>If Stableford is selected:</strong> <strong>Slams Off</strong> or Slams on. If Slams On is selected, two more buttons appear: <strong>Gross slams</strong> or Net slams. Gross slams award 2 team points if all players get a gross par or better. Net slams award 2 points if all players get a net par or better.</li>
+                <li><strong>If Net Par is selected,</strong> the following buttons appear:
+                  <ul className="pl-4 mt-2 space-y-1">
+                    <li><strong>Front Nine Scores Counted:</strong> This is the number of net better ball scores to be recorded on the front nine holes. Default is <strong>2</strong></li>
+                    <li><strong>Back Nine Scores Counted:</strong> This is the number of net better ball scores to be recorded on the back nine holes. Default is <strong>2</strong></li>
+                    <li><strong>All Scores Counted:</strong> Allows selection of any holes for which all players net scores will be counted in the team score. If a particular hole is selected, the all scores counted will override the number of scores selected for that hole's nine. For example, if Front Nine Scores Counted value is 2, and All Scores Counted identifies hole 1, then all of the players' net scores for hole 1 will be counted, not just 2 scores.</li>
+                  </ul>
+                </li>
+                <li><strong>Skins:</strong> <strong>Net</strong>, Gross, or both. Will track which player gets the low net, gross or net and gross score on a hole.</li>
+                <li><strong>Starting Hole:</strong> Choose the hole where your game is beginning. Default is <strong>Hole 1</strong></li>
+                <li><strong>Closest to the Pin Hole:</strong> Choose hole for CTP. Earns +2 points in Stableford and -1 for Net Par. Default is <strong>None</strong></li>
+                <li><strong>Long Drive Hole:</strong> Choose hole for Long Drive. Earns +2 points in Stableford and -1 for Net Par. Default is <strong>None</strong></li>
+                <li><strong>Player names:</strong> Names must be unique through 5 letters or popup message will appear. Must enter at least 1 player.</li>
+                <li><strong>HCP:</strong> Course handicap based on player's index and tees that are chosen. The player must determine what to enter based on GHIN handicap calculator. For most players, enter as a positive number. For plus handicap players (i.e. really good golfers), enter "+" followed by the plus handicap number (e.g. "+2"). If left blank, a 0 (scratch) handicap is assumed.</li>
+                <li>Once all info is entered, select <strong>Start Game</strong> to begin. Note: settings can be changed if necessary during the game via a Settings button on the subsequent pages.</li>
+              </ul>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3 text-green-700">Score Entry</h3>
+              <ul className="text-sm space-y-2 pl-4">
+                <li><strong>Select hole:</strong> Default is the starting hole selected under setup. At any time during the game, user can select any hole in order to enter or revise scores.</li>
+                <li><strong>Entering Scores:</strong> Enter gross score. Default is Par for that hole. To change, use the + or - buttons. Note: Player info shown includes their course handicap (HCP) and the number of strokes that will be applied to determine net score from gross score.</li>
+                <li><strong>For CTP and Long Drive holes,</strong> there will be buttons displayed to indicate you got CTP and/or Long Drive, which will award +2 team points in Stableford and -1 in Net Par. If the hole is hacked (gross score for player who achieved CTP or Long Drive is above par), 2 team points will be subtracted in Stableford and 1 team point added in Net Par. These selections can be entered after playing a hole and changed later if it is determined another team achieved those awards.</li>
+                <li><strong>For Stableford game,</strong> any player's score that is above net double bogey will result in 1 point being subtracted from the team score.</li>
+                <li>Once all scores are entered, select <strong>"Complete Hole and Continue"</strong>, which will auto navigate to the next hole. Other choices are:
+                  <ul className="pl-4 mt-2 space-y-1">
+                    <li><strong>Settings:</strong> Takes you back to the Game Setup page. If selected, upon completion of revisions to the settings, select Apply Settings & Continue in order to return to score recording.</li>
+                    <li><strong>New Game:</strong> Will reset the app to all default values and return you to the Game Setup page. Player names will need to be entered again.</li>
+                    <li><strong>View Summary:</strong> Will take you to the summary info for the round (see below).</li>
+                  </ul>
+                </li>
+                <li>Once all holes have been recorded, the app will auto navigate to the Game Summary page.</li>
+              </ul>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3 text-green-700">Game Summary</h3>
+              <ul className="text-sm space-y-2 pl-4">
+                <li>Type of game and type of skins will be displayed, as well as slams selected.</li>
+                <li><strong>For Stableford game,</strong> current number of team points is displayed. This takes into account the points won on each hole for each player, plus any bonus points for CTP, Long Drive and slams.</li>
+                <li><strong>For Net Par game,</strong> the Team Net Par score will be displayed.</li>
+                <li><strong>Individual Scores:</strong> The running total of the gross and net scores is displayed, as well as the number of skins won. For Stableford, the number of team points won by each player is displayed.</li>
+                <li><strong>Hole Summary:</strong> Depending on type of game, breakdown of Stableford points or net better ball score for each hole is displayed as well as who won a skin (net and/or gross). Also shown are emojis signifying CTP 🎯, Long Drive 🏌️, Hack 💀 or Slams 💥 (only for Stableford) that were recorded for a hole.</li>
+                <li><strong>Detailed Scorecard:</strong> Show gross and net scores for each player on each hole. Also highlights where gross and/or net skins were won and by which player.</li>
+                <li><strong>Statistics:</strong> Provides summary team stats and skins leaders.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => {
+                setCurrentPage('setup');
+                window.scrollTo(0, 0);
+              }}
+              className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg text-lg hover:bg-green-700 transition-colors"
+            >
+              Return to Game
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentPage === 'summary') {
+    const activePlayers = players.filter(p => p.name.trim() !== '');
+    
+    return (
+      <div className="min-h-screen bg-green-50 p-4">
+        <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-4">
+          <div className="text-center mb-6">
+            <h1 className="text-xl font-bold text-green-800">Oakmont Tuesday Boys</h1>
+            <h2 className="text-lg font-semibold">Game Summary</h2>
+          </div>
+
+          <div className="bg-gray-100 rounded-lg p-3 mb-4 text-center">
+            <div className="text-sm font-semibold">
+              Game: {gameType === 'stableford' ? 'Stableford' : 'Net Par'}
+              {gameType === 'stableford' && slamsOn && ` (${slamType.charAt(0).toUpperCase() + slamType.slice(1)} Slams On)`}
+            </div>
+            <div className="text-xs text-gray-600">
+              Skins: {skinsType.charAt(0).toUpperCase() + skinsType.slice(1)}
+            </div>
+            {gameType === 'netpar' && (
+              <div className="text-xs text-gray-600 mt-1">
+                Front: {frontNineCount} • Back: {backNineCount}
+                {allScoresHoles.length > 0 && ` • All: ${allScoresHoles.join(',')}`}
+              </div>
+            )}
+          </div>
+
+          <div className={`rounded-lg p-4 mb-6 border-2 ${
+            gameType === 'stableford' ? 'bg-green-100 border-green-500' : 'bg-blue-100 border-blue-500'
+          }`}>
+            <div className="text-center">
+              <div className={`text-lg font-semibold ${
+                gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+              }`}>
+                Team {gameType === 'stableford' ? 'Stableford' : 'Net Par'}
+              </div>
+              <div className={`text-3xl font-bold ${
+                gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+              }`}>
+                {gameType === 'stableford' ? getCumulativePoints() : 
+                 (getCumulativePoints() >= 0 ? `+${getCumulativePoints()}` : getCumulativePoints())}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                {gameType === 'stableford' ? 'Total Points' : 'Total to Par'}
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Individual Scores</h3>
+            <div className="space-y-3">
+              {activePlayers.map((player, index) => {
+                const playerIndex = players.findIndex(p => p.name === player.name);
+                const grossTotal = getPlayerTotalScore(playerIndex);
+                const netTotal = getPlayerNetTotal(playerIndex);
+                const stablefordTotal = getPlayerStablefordTotal(playerIndex);
+                
+                return (
+                  <div key={playerIndex} className="bg-gray-50 rounded-lg p-4 border">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <div className="font-semibold text-lg">{player.name}</div>
+                        <div className="text-sm text-gray-600">Handicap: {player.handicap || '0'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">{grossTotal > 0 ? grossTotal : '-'}</div>
+                        <div className="text-sm text-gray-600">Gross</div>
+                      </div>
+                    </div>
+                    
+                    <div className={`grid gap-2 text-center text-sm ${
+                      gameType === 'stableford' ? 'grid-cols-3' : 'grid-cols-2'
+                    }`}>
+                      <div>
+                        <div className="font-semibold">{netTotal !== 0 ? netTotal : '-'}</div>
+                        <div className="text-xs text-gray-600">Net</div>
+                      </div>
+                      {gameType === 'stableford' && (
+                        <div>
+                          <div className="font-semibold text-green-600">{stablefordTotal > 0 ? stablefordTotal : '-'}</div>
+                          <div className="text-xs text-gray-600">Stableford</div>
+                        </div>
+                      )}
+                      <div>
+                        {skinsType === 'both' ? (
+                          <div>
+                            <div className="font-semibold">
+                              <span className="text-yellow-600">{getNetSkinCount(player.name)}</span>
+                              <span className="text-gray-400 mx-1">/</span>
+                              <span className="text-red-600">{getGrossSkinCount(player.name)}</span>
+                            </div>
+                            <div className="text-xs text-gray-600">Skins Net/Gross</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="font-semibold text-yellow-600">{getSkinCount(player.name)}</div>
+                            <div className="text-xs text-gray-600">Skins</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Hole-by-Hole Summary */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Hole Summary</h3>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className={`grid gap-1 text-xs font-semibold mb-2 ${
+                gameType === 'stableford' ? 'grid-cols-6' : 'grid-cols-5'
+              }`}>
+                <div>Hole</div>
+                <div>Par</div>
+                <div>HCP</div>
+                {gameType === 'stableford' && <div>Pts</div>}
+                {gameType === 'netpar' && <div>Score</div>}
+                <div>Skin</div>
+                <div>Special</div>
+              </div>
+              
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {Array.from({length: 18}, (_, i) => {
+                  const holePoints = holesCompleted[i] ? getHolePoints(i) : 0;
+                  const slam = holesCompleted[i] && isSlam(i);
+                  
+                  return (
+                    <div key={i} className={`grid gap-1 text-xs py-1 border-b border-gray-200 ${
+                      !holesCompleted[i] ? 'opacity-50' : ''
+                    } ${gameType === 'stableford' ? 'grid-cols-6' : 'grid-cols-5'}`}>
+                      <div className="font-medium">{i + 1}</div>
+                      <div>{courseData.par[i]}</div>
+                      <div>{courseData.handicap[i]}</div>
+                      {gameType === 'stableford' && (
+                        <div className={slam ? 'font-bold text-green-600' : ''}>
+                          {holesCompleted[i] ? holePoints : '-'}{slam ? '*' : ''}
+                        </div>
+                      )}
+                      {gameType === 'netpar' && (
+                        <div className={`${
+                          holesCompleted[i] && holePoints < 0 ? 'font-bold text-green-600' :
+                          holesCompleted[i] && holePoints > 0 ? 'font-bold text-red-600' : ''
+                        }`}>
+                          {holesCompleted[i] ? 
+                            (holePoints >= 0 ? `+${holePoints}` : holePoints) : '-'
+                          }
+                        </div>
+                      )}
+                      <div className="text-yellow-600">
+                        {skinsType === 'both' ? (
+                          <div className="flex flex-col">
+                            {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? (
+                              <span className="bg-yellow-200 px-1 rounded text-xs mb-1">
+                                {netSkinWinners[i] === 'Tie' ? 'N-Tie' : 
+                                 netSkinWinners[i] ? `N-${netSkinWinners[i].substring(0, 6)}` : 'N--'}
+                              </span>
+                            ) : (
+                              <span className="text-xs mb-1">-</span>
+                            )}
+                            {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? (
+                              <span className="bg-red-200 px-1 rounded text-xs">
+                                {grossSkinWinners[i] === 'Tie' ? 'G-Tie' : 
+                                 grossSkinWinners[i] ? `G-${grossSkinWinners[i].substring(0, 6)}` : 'G--'}
+                              </span>
+                            ) : (
+                              <span className="text-xs">-</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span>
+                            {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && skinWinners[i] && skinWinners[i] !== 'Tie' ? skinWinners[i].substring(0, 6) : 
+                             (holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && skinWinners[i] === 'Tie' ? 'Tie' : '-'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs">
+                        {i + 1 === ctpHole && ctpHole > 0 && ctpWon && '🎯'}
+                        {i + 1 === ctpHole && ctpHole > 0 && ctpHack && '💀'}
+                        {i + 1 === longDriveHole && longDriveHole > 0 && longDriveWon && '🏌️'}
+                        {i + 1 === longDriveHole && longDriveHole > 0 && longDriveHack && '💀'}
+                        {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && isSlam(i) && slamsOn && gameType === 'stableford' && '💥'}
+                        {gameType === 'netpar' && allScoresHoles.includes(i + 1) && '📊'}
+                        {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && '✅'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {gameType === 'stableford' && slamsOn && (
+                <div className="mt-2 pt-2 border-t border-gray-300">
+                  <div className="text-xs text-gray-600">
+                    * = Slam bonus (+2 points)
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Detailed Scorecard */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Detailed Scorecard</h3>
+            <div className="bg-gray-50 rounded-lg p-3 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-300">
+                    <th className="text-left py-1">Hole</th>
+                    <th className="text-center py-1">Par</th>
+                    {activePlayers.map((player, i) => (
+                      <th key={i} className="text-center py-1 px-1">{player.name.substring(0, 6)}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Front 9 */}
+                  {Array.from({length: 9}, (_, i) => (
+                    <tr key={i} className="border-b border-gray-200">
+                      <td className="py-1 font-medium">{i + 1}</td>
+                      <td className="text-center py-1">{courseData.par[i]}</td>
+                      {activePlayers.map((player, playerIdx) => {
+                        const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                        const score = scores[i][actualPlayerIndex];
+                        const par = courseData.par[i];
+                        const courseHandicap = player.handicap;
+                        const holeHandicap = courseData.handicap[i];
+                        const grossScore = score || par;
+                        const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                        const showNetScore = netScore !== grossScore;
+                        
+                        return (
+                          <td key={playerIdx} className="text-center py-1 px-1">
+                            {(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? (
+                              <span className={`${
+                                score === null ? 'text-gray-400' :
+                                score < par ? 'font-bold' : 'font-medium'
+                              }`}>
+                                {skinsType === 'both' && netSkinWinners[i] === player.name && grossSkinWinners[i] === player.name ? (
+                                  <>
+                                    <span className="bg-red-200 px-1 rounded">{grossScore}</span>
+                                    <span>/</span>
+                                    <span className="bg-yellow-200 px-1 rounded">{netScore}</span>
+                                  </>
+                                ) : (
+                                  <span className={`${
+                                    skinsType === 'both' ? (
+                                      netSkinWinners[i] === player.name ? 'bg-yellow-200 px-1 rounded' :
+                                      grossSkinWinners[i] === player.name ? 'bg-red-200 px-1 rounded' : ''
+                                    ) : (
+                                      skinWinners[i] === player.name ? 'bg-yellow-200 px-1 rounded' : ''
+                                    )
+                                  }`}>
+                                    {grossScore}{showNetScore ? `/${netScore}` : ''}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  
+                  {/* Back 9 */}
+                  {Array.from({length: 9}, (_, i) => {
+                    const holeIndex = i + 9;
+                    return (
+                      <tr key={holeIndex} className="border-b border-gray-200">
+                        <td className="py-1 font-medium">{holeIndex + 1}</td>
+                        <td className="text-center py-1">{courseData.par[holeIndex]}</td>
+                        {activePlayers.map((player, playerIdx) => {
+                          const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                          const score = scores[holeIndex][actualPlayerIndex];
+                          const par = courseData.par[holeIndex];
+                          const courseHandicap = player.handicap;
+                          const holeHandicapRating = courseData.handicap[holeIndex];
+                          const grossScore = score || par;
+                          const netScore = calculateNetScore(grossScore, holeHandicapRating, courseHandicap);
+                          const showNetScore = netScore !== grossScore;
+                          
+                          return (
+                            <td key={playerIdx} className="text-center py-1 px-1">
+                              {(holesCompleted[holeIndex] || scores[holeIndex].some(score => score !== null && score !== undefined)) ? (
+                                <span className={`${
+                                  score === null ? 'text-gray-400' :
+                                  score < par ? 'font-bold' : 'font-medium'
+                                }`}>
+                                  {skinsType === 'both' && netSkinWinners[holeIndex] === player.name && grossSkinWinners[holeIndex] === player.name ? (
+                                    <>
+                                      <span className="bg-red-200 px-1 rounded">{grossScore}</span>
+                                      <span>/</span>
+                                      <span className="bg-yellow-200 px-1 rounded">{netScore}</span>
+                                    </>
+                                  ) : (
+                                    <span className={`${
+                                      skinsType === 'both' ? (
+                                        netSkinWinners[holeIndex] === player.name ? 'bg-yellow-200 px-1 rounded' :
+                                        grossSkinWinners[holeIndex] === player.name ? 'bg-red-200 px-1 rounded' : ''
+                                      ) : (
+                                        skinWinners[holeIndex] === player.name ? 'bg-yellow-200 px-1 rounded' : ''
+                                      )
+                                    }`}>
+                                      {grossScore}{showNetScore ? `/${netScore}` : ''}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                  
+                  {/* Total */}
+                  <tr className="bg-green-200 font-bold border-t-2 border-green-500">
+                    <td className="py-2">Total</td>
+                    <td className="text-center py-2">{courseData.par.reduce((a, b) => a + b, 0)}</td>
+                    {activePlayers.map((player, playerIdx) => {
+                      const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                      const total = getPlayerTotalScore(actualPlayerIndex);
+                      return (
+                        <td key={playerIdx} className="text-center py-2 px-1">
+                          {total > 0 ? total : '-'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Statistics</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`rounded-lg p-3 ${
+                gameType === 'stableford' ? 'bg-green-100' : 'bg-blue-100'
+              }`}>
+                <div className={`text-sm font-semibold ${
+                  gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+                }`}>Team Stats</div>
+                {gameType === 'stableford' && (
+                  <>
+                    <div className="text-xs mt-1">
+                      Slams: {Array.from({length: 18}, (_, i) => holesCompleted[i] && isSlam(i)).filter(Boolean).length}
+                    </div>
+                    <div className="text-xs">
+                      Avg Points/Hole: {holesCompleted.filter(Boolean).length > 0 ? (getCumulativePoints() / holesCompleted.filter(Boolean).length).toFixed(1) : '0.0'}
+                    </div>
+                  </>
+                )}
+                {gameType === 'netpar' && (
+                  <>
+                    <div className="text-xs mt-1">
+                      Holes Played: {holesCompleted.filter(Boolean).length}
+                    </div>
+                    <div className="text-xs">
+                      Avg Score/Hole: {holesCompleted.filter(Boolean).length > 0 ? (getCumulativePoints() / holesCompleted.filter(Boolean).length).toFixed(1) : '0.0'}
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <div className="bg-yellow-100 rounded-lg p-3">
+                <div className="text-sm font-semibold text-yellow-800">Skins Leader</div>
+                <div className="text-xs mt-1">
+                  {skinsType === 'both' ? (
+                    (() => {
+                      const netSkinCounts = activePlayers.map(p => ({
+                        name: p.name,
+                        count: getNetSkinCount(p.name)
+                      }));
+                      const grossSkinCounts = activePlayers.map(p => ({
+                        name: p.name,
+                        count: getGrossSkinCount(p.name)
+                      }));
+                      const maxNetSkins = Math.max(...netSkinCounts.map(s => s.count));
+                      const maxGrossSkins = Math.max(...grossSkinCounts.map(s => s.count));
+                      const netLeaders = netSkinCounts.filter(s => s.count === maxNetSkins);
+                      const grossLeaders = grossSkinCounts.filter(s => s.count === maxGrossSkins);
+                      
+                      return (
+                        <div>
+                          <div className="text-yellow-600">
+                            Net: {maxNetSkins === 0 ? 'None yet' : 
+                                 netLeaders.length === 1 ? `${netLeaders[0].name}: ${maxNetSkins}` :
+                                 `Tied: ${netLeaders.map(l => l.name).join(', ')} (${maxNetSkins})`}
+                          </div>
+                          <div className="text-red-600">
+                            Gross: {maxGrossSkins === 0 ? 'None yet' : 
+                                   grossLeaders.length === 1 ? `${grossLeaders[0].name}: ${maxGrossSkins}` :
+                                   `Tied: ${grossLeaders.map(l => l.name).join(', ')} (${maxGrossSkins})`}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    (() => {
+                      const skinCounts = activePlayers.map(p => ({
+                        name: p.name,
+                        count: getSkinCount(p.name)
+                      }));
+                      const maxSkins = Math.max(...skinCounts.map(s => s.count));
+                      const leaders = skinCounts.filter(s => s.count === maxSkins);
+                      
+                      if (maxSkins === 0) return 'No skins won yet';
+                      if (leaders.length === 1) return `${leaders[0].name}: ${maxSkins}`;
+                      return `Tied: ${leaders.map(l => l.name).join(', ')} (${maxSkins})`;
+                    })()
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setCurrentPage('setup');
+                window.scrollTo(0, 0);
+              }}
+              className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => {
+                for (let holeIndex = 0; holeIndex < 18; holeIndex++) {
+                  calculateSkinWinner(holeIndex);
+                }
+                setCurrentPage('scorecard');
+                window.scrollTo(0, 0);
+              }}
+              className="flex-1 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors"
+            >
+              Back to Scorecard
+            </button>
+            <button
+              onClick={resetGame}
+              className="flex-1 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              New Game
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>Loading...</div>
+  );
+};
+
+export default OakmontScorecard;
