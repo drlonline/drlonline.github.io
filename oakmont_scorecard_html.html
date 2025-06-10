@@ -1,0 +1,1736 @@
+                                    <li><strong>HCP:</strong> Course handicap based on player's index and tees that are chosen. The player must determine what to enter based on GHIN handicap calculator. For most players, enter as a positive number. For plus handicap players (i.e. really good golfers), enter "+" followed by the plus handicap number (e.g. "+2"). If left blank, a 0 (scratch) handicap is assumed.</li>
+                                    <li>Once all info is entered, select <strong>Start Game</strong> to begin. Note: settings can be changed if necessary during the game via a Settings button on the subsequent pages.</li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold mb-3 text-green-700">Score Entry</h3>
+                                <ul class="text-sm space-y-2 pl-4 list-disc">
+                                    <li><strong>Select hole:</strong> Default is the starting hole selected under setup. At any time during the game, user can select any hole in order to enter or revise scores.</li>
+                                    <li><strong>Entering Scores:</strong> Enter gross score. Default is Par for that hole. To change, use the + or - buttons. Note: Player info shown includes their course handicap (HCP) and the number of strokes that will be applied to determine net score from gross score.</li>
+                                    <li><strong>For CTP and Long Drive holes,</strong> there will be buttons displayed to indicate you got CTP and/or Long Drive, which will award +2 team points in Stableford and -1 in Net Par. If the hole is hacked (gross score for player who achieved CTP or Long Drive is above par), 2 team points will be subtracted in Stableford and 1 team point added in Net Par. These selections can be entered after playing a hole and changed later if it is determined another team achieved those awards.</li>
+                                    <li><strong>For Stableford game,</strong> any player's score that is above net double bogey will result in 1 point being subtracted from the team score.</li>
+                                    <li>Once all scores are entered, select <strong>"Complete Hole and Continue"</strong>, which will auto navigate to the next hole. Other choices are:
+                                        <ul class="pl-4 mt-2 space-y-1 list-disc">
+                                            <li><strong>Settings:</strong> Takes you back to the Game Setup page. If selected, upon completion of revisions to the settings, select Apply Settings & Continue in order to return to score recording.</li>
+                                            <li><strong>New Game:</strong> Will reset the app to all default values and return you to the Game Setup page. Player names will need to be entered again.</li>
+                                            <li><strong>View Summary:</strong> Will take you to the summary info for the round (see below).</li>
+                                        </ul>
+                                    </li>
+                                    <li>Once all holes have been recorded, the app will auto navigate to the Game Summary page.</li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold mb-3 text-green-700">Game Summary</h3>
+                                <ul class="text-sm space-y-2 pl-4 list-disc">
+                                    <li>Type of game and type of skins will be displayed, as well as slams selected.</li>
+                                    <li><strong>For Stableford game,</strong> current number of team points is displayed. This takes into account the points won on each hole for each player, plus any bonus points for CTP, Long Drive and slams.</li>
+                                    <li><strong>For Net Par game,</strong> the Team Net Par score will be displayed.</li>
+                                    <li><strong>Individual Scores:</strong> The running total of the gross and net scores is displayed, as well as the number of skins won. For Stableford, the number of team points won by each player is displayed.</li>
+                                    <li><strong>Hole Summary:</strong> Depending on type of game, breakdown of Stableford points or net better ball score for each hole is displayed as well as who won a skin (net and/or gross). Also shown are emojis signifying CTP 🎯, Long Drive 🏌️, Hack 💀 or Slams 💥 (only for Stableford) that were recorded for a hole.</li>
+                                    <li><strong>Detailed Scorecard:</strong> Shows gross and net scores for each player on each hole. Also highlights where gross and/or net skins were won and by which player.</li>
+                                    <li><strong>Statistics:</strong> Provides summary team stats and skins leaders.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 text-center">
+                            <button
+                                onclick="currentPage = 'setup'; window.scrollTo(0, 0); render();"
+                                class="px-8 py-3 bg-green-600 text-white font-bold rounded-lg text-lg hover:bg-green-700 transition-colors shadow-lg"
+                            >
+                                Return to Game
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSummaryPage() {
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            
+            return `
+                <div class="min-h-screen bg-green-50 p-4">
+                    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-4">
+                        <div class="text-center mb-6">
+                            <h1 class="text-xl font-bold text-green-800">Oakmont Tuesday Boys</h1>
+                            <h2 class="text-lg font-semibold">Game Summary</h2>
+                        </div>
+
+                        <div class="bg-gray-100 rounded-lg p-3 mb-4 text-center border border-gray-300">
+                            <div class="text-sm font-semibold">
+                                Game: ${gameType === 'stableford' ? 'Stableford' : 'Net Par'}
+                                ${gameType === 'stableford' && slamsOn ? ` (${slamType.charAt(0).toUpperCase() + slamType.slice(1)} Slams On)` : ''}
+                            </div>
+                            <div class="text-xs text-gray-600">
+                                Skins: ${skinsType.charAt(0).toUpperCase() + skinsType.slice(1)}
+                            </div>
+                            ${gameType === 'netpar' ? `
+                                <div class="text-xs text-gray-600 mt-1">
+                                    Front: ${frontNineCount} • Back: ${backNineCount}
+                                    ${allScoresHoles.length > 0 ? ` • All: ${allScoresHoles.join(',')}` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="rounded-lg p-4 mb-6 border-2 shadow-md ${
+                            gameType === 'stableford' ? 'bg-green-100 border-green-500' : 'bg-blue-100 border-blue-500'
+                        }">
+                            <div class="text-center">
+                                <div class="text-lg font-semibold ${
+                                    gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+                                }">
+                                    Team ${gameType === 'stableford' ? 'Stableford' : 'Net Par'}
+                                </div>
+                                <div class="text-3xl font-bold ${
+                                    gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+                                }">
+                                    ${gameType === 'stableford' ? getCumulativePoints() : 
+                                     (getCumulativePoints() >= 0 ? `+${getCumulativePoints()}` : getCumulativePoints())}
+                                </div>
+                                <div class="text-sm text-gray-600 mt-1">
+                                    ${gameType === 'stableford' ? 'Total Points' : 'Total to Par'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">Individual Scores</h3>
+                            <div class="space-y-3">
+                                ${activePlayers.map((player) => {
+                                    const playerIndex = players.findIndex(p => p.name === player.name);
+                                    const grossTotal = getPlayerTotalScore(playerIndex);
+                                    const netTotal = getPlayerNetTotal(playerIndex);
+                                    const stablefordTotal = getPlayerStablefordTotal(playerIndex);
+                                    
+                                    return `
+                                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 shadow-sm">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <div class="font-semibold text-lg text-gray-800">${player.name}</div>
+                                                    <div class="text-sm text-gray-600">Handicap: ${player.handicap || '0'}</div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-lg font-bold text-gray-800">${grossTotal > 0 ? grossTotal : '-'}</div>
+                                                    <div class="text-sm text-gray-600">Gross</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="grid gap-2 text-center text-sm ${
+                                                gameType === 'stableford' ? 'grid-cols-3' : 'grid-cols-2'
+                                            }">
+                                                <div class="bg-white rounded p-2 border">
+                                                    <div class="font-semibold text-blue-600">${netTotal !== 0 ? netTotal : '-'}</div>
+                                                    <div class="text-xs text-gray-600">Net</div>
+                                                </div>
+                                                ${gameType === 'stableford' ? `
+                                                    <div class="bg-white rounded p-2 border">
+                                                        <div class="font-semibold text-green-600">${stablefordTotal > 0 ? stablefordTotal : '-'}</div>
+                                                        <div class="text-xs text-gray-600">Stableford</div>
+                                                    </div>
+                                                ` : ''}
+                                                <div class="bg-white rounded p-2 border">
+                                                    ${skinsType === 'both' ? `
+                                                        <div>
+                                                            <div class="font-semibold">
+                                                                <span class="text-yellow-600">${getNetSkinCount(player.name)}</span>
+                                                                <span class="text-gray-400 mx-1">/</span>
+                                                                <span class="text-red-600">${getGrossSkinCount(player.name)}</span>
+                                                            </div>
+                                                            <div class="text-xs text-gray-600">Skins Net/Gross</div>
+                                                        </div>
+                                                    ` : `
+                                                        <div>
+                                                            <div class="font-semibold text-yellow-600">${getSkinCount(player.name)}</div>
+                                                            <div class="text-xs text-gray-600">Skins</div>
+                                                        </div>
+                                                    `}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Hole-by-Hole Summary -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">Hole Summary</h3>
+                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                <div class="grid gap-1 text-xs font-semibold mb-2 text-gray-700 ${
+                                    gameType === 'stableford' ? 'grid-cols-6' : 'grid-cols-5'
+                                }">
+                                    <div>Hole</div>
+                                    <div>Par</div>
+                                    <div>HCP</div>
+                                    ${gameType === 'stableford' ? '<div>Pts</div>' : '<div>Score</div>'}
+                                    <div>Skin</div>
+                                    <div>Special</div>
+                                </div>
+                                
+                                <div class="space-y-1 max-h-48 overflow-y-auto">
+                                    ${Array.from({length: 18}, (_, i) => {
+                                        const holePoints = holesCompleted[i] ? getHolePoints(i) : 0;
+                                        const slam = holesCompleted[i] && isSlam(i);
+                                        
+                                        return `
+                                            <div class="grid gap-1 text-xs py-1 border-b border-gray-200 ${
+                                                !holesCompleted[i] ? 'opacity-50' : ''
+                                            } ${gameType === 'stableford' ? 'grid-cols-6' : 'grid-cols-5'}">
+                                                <div class="font-medium">${i + 1}</div>
+                                                <div>${courseData.par[i]}</div>
+                                                <div>${courseData.handicap[i]}</div>
+                                                ${gameType === 'stableford' ? `
+                                                    <div class="${slam ? 'font-bold text-green-600' : ''}">
+                                                        ${holesCompleted[i] ? holePoints : '-'}${slam ? '*' : ''}
+                                                    </div>
+                                                ` : `
+                                                    <div class="${
+                                                        holesCompleted[i] && holePoints < 0 ? 'font-bold text-green-600' :
+                                                        holesCompleted[i] && holePoints > 0 ? 'font-bold text-red-600' : ''
+                                                    }">
+                                                        ${holesCompleted[i] ? 
+                                                            (holePoints >= 0 ? `+${holePoints}` : holePoints) : '-'
+                                                        }
+                                                    </div>
+                                                `}
+                                                <div class="text-yellow-600">
+                                                    ${skinsType === 'both' ? `
+                                                        <div class="flex flex-col">
+                                                            ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? `
+                                                                <span class="bg-yellow-200 px-1 rounded text-xs mb-1">
+                                                                    ${netSkinWinners[i] === 'Tie' ? 'N-Tie' : 
+                                                                     netSkinWinners[i] ? `N-${netSkinWinners[i].substring(0, 6)}` : 'N--'}
+                                                                </span>
+                                                            ` : `
+                                                                <span class="text-xs mb-1">-</span>
+                                                            `}
+                                                            ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? `
+                                                                <span class="bg-red-200 px-1 rounded text-xs">
+                                                                    ${grossSkinWinners[i] === 'Tie' ? 'G-Tie' : 
+                                                                     grossSkinWinners[i] ? `G-${grossSkinWinners[i].substring(0, 6)}` : 'G--'}
+                                                                </span>
+                                                            ` : `
+                                                                <span class="text-xs">-</span>
+                                                            `}
+                                                        </div>
+                                                    ` : `
+                                                        <span>
+                                                            ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && skinWinners[i] && skinWinners[i] !== 'Tie' ? skinWinners[i].substring(0, 6) : 
+                                                             (holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && skinWinners[i] === 'Tie' ? 'Tie' : '-'}
+                                                        </span>
+                                                    `}
+                                                </div>
+                                                <div class="text-xs">
+                                                    ${i + 1 === ctpHole && ctpHole > 0 && ctpWon ? '🎯' : ''}
+                                                    ${i + 1 === ctpHole && ctpHole > 0 && ctpHack ? '💀' : ''}
+                                                    ${i + 1 === longDriveHole && longDriveHole > 0 && longDriveWon ? '🏌️' : ''}
+                                                    ${i + 1 === longDriveHole && longDriveHole > 0 && longDriveHack ? '💀' : ''}
+                                                    ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) && isSlam(i) && slamsOn && gameType === 'stableford' ? '💥' : ''}
+                                                    ${gameType === 'netpar' && allScoresHoles.includes(i + 1) ? '📊' : ''}
+                                                    ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? '✅' : ''}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                                
+                                ${gameType === 'stableford' && slamsOn ? `
+                                    <div class="mt-2 pt-2 border-t border-gray-300">
+                                        <div class="text-xs text-gray-600">
+                                            * = Slam bonus (+2 points)
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+
+                        <!-- Detailed Scorecard -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">Detailed Scorecard</h3>
+                            <div class="bg-gray-50 rounded-lg p-3 overflow-x-auto border border-gray-200">
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="border-b border-gray-300">
+                                            <th class="text-left py-1 font-semibold">Hole</th>
+                                            <th class="text-center py-1 font-semibold">Par</th>
+                                            ${activePlayers.map((player) => 
+                                                `<th class="text-center py-1 px-1 font-semibold">${player.name.substring(0, 6)}</th>`
+                                            ).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Front 9 -->
+                                        ${Array.from({length: 9}, (_, i) => `
+                                            <tr class="border-b border-gray-200">
+                                                <td class="py-1 font-medium">${i + 1}</td>
+                                                <td class="text-center py-1">${courseData.par[i]}</td>
+                                                ${activePlayers.map((player) => {
+                                                    const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                                                    const score = scores[i][actualPlayerIndex];
+                                                    const par = courseData.par[i];
+                                                    const courseHandicap = player.handicap;
+                                                    const holeHandicap = courseData.handicap[i];
+                                                    const grossScore = score || par;
+                                                    const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                                                    const showNetScore = netScore !== grossScore;
+                                                    
+                                                    return `
+                                                        <td class="text-center py-1 px-1">
+                                                            ${(holesCompleted[i] || scores[i].some(score => score !== null && score !== undefined)) ? `
+                                                                <span class="${
+                                                                    score === null ? 'text-gray-400' :
+                                                                    score < par ? 'font-bold' : 'font-medium'
+                                                                }">
+                                                                    ${skinsType === 'both' && netSkinWinners[i] === player.name && grossSkinWinners[i] === player.name ? `
+                                                                        <span class="bg-red-200 px-1 rounded">${grossScore}</span>
+                                                                        <span>/</span>
+                                                                        <span class="bg-yellow-200 px-1 rounded">${netScore}</span>
+                                                                    ` : `
+                                                                        <span class="${
+                                                                            skinsType === 'both' ? (
+                                                                                netSkinWinners[i] === player.name ? 'bg-yellow-200 px-1 rounded' :
+                                                                                grossSkinWinners[i] === player.name ? 'bg-red-200 px-1 rounded' : ''
+                                                                            ) : (
+                                                                                skinWinners[i] === player.name ? 'bg-yellow-200 px-1 rounded' : ''
+                                                                            )
+                                                                        }">
+                                                                            ${grossScore}${showNetScore ? `/${netScore}` : ''}
+                                                                        </span>
+                                                                    `}
+                                                                </span>
+                                                            ` : `
+                                                                <span class="text-gray-300">-</span>
+                                                            `}
+                                                        </td>
+                                                    `;
+                                                }).join('')}
+                                            </tr>
+                                        `).join('')}
+                                        
+                                        <!-- Back 9 -->
+                                        ${Array.from({length: 9}, (_, i) => {
+                                            const holeIndex = i + 9;
+                                            return `
+                                                <tr class="border-b border-gray-200">
+                                                    <td class="py-1 font-medium">${holeIndex + 1}</td>
+                                                    <td class="text-center py-1">${courseData.par[holeIndex]}</td>
+                                                    ${activePlayers.map((player) => {
+                                                        const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                                                        const score = scores[holeIndex][actualPlayerIndex];
+                                                        const par = courseData.par[holeIndex];
+                                                        const courseHandicap = player.handicap;
+                                                        const holeHandicapRating = courseData.handicap[holeIndex];
+                                                        const grossScore = score || par;
+                                                        const netScore = calculateNetScore(grossScore, holeHandicapRating, courseHandicap);
+                                                        const showNetScore = netScore !== grossScore;
+                                                        
+                                                        return `
+                                                            <td class="text-center py-1 px-1">
+                                                                ${(holesCompleted[holeIndex] || scores[holeIndex].some(score => score !== null && score !== undefined)) ? `
+                                                                    <span class="${
+                                                                        score === null ? 'text-gray-400' :
+                                                                        score < par ? 'font-bold' : 'font-medium'
+                                                                    }">
+                                                                        ${skinsType === 'both' && netSkinWinners[holeIndex] === player.name && grossSkinWinners[holeIndex] === player.name ? `
+                                                                            <span class="bg-red-200 px-1 rounded">${grossScore}</span>
+                                                                            <span>/</span>
+                                                                            <span class="bg-yellow-200 px-1 rounded">${netScore}</span>
+                                                                        ` : `
+                                                                            <span class="${
+                                                                                skinsType === 'both' ? (
+                                                                                    netSkinWinners[holeIndex] === player.name ? 'bg-yellow-200 px-1 rounded' :
+                                                                                    grossSkinWinners[holeIndex] === player.name ? 'bg-red-200 px-1 rounded' : ''
+                                                                                ) : (
+                                                                                    skinWinners[holeIndex] === player.name ? 'bg-yellow-200 px-1 rounded' : ''
+                                                                                )
+                                                                            }">
+                                                                                ${grossScore}${showNetScore ? `/${netScore}` : ''}
+                                                                            </span>
+                                                                        `}
+                                                                    </span>
+                                                                ` : `
+                                                                    <span class="text-gray-300">-</span>
+                                                                `}
+                                                            </td>
+                                                        `;
+                                                    }).join('')}
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                        
+                                        <!-- Total -->
+                                        <tr class="bg-green-200 font-bold border-t-2 border-green-500">
+                                            <td class="py-2">Total</td>
+                                            <td class="text-center py-2">${courseData.par.reduce((a, b) => a + b, 0)}</td>
+                                            ${activePlayers.map((player) => {
+                                                const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                                                const total = getPlayerTotalScore(actualPlayerIndex);
+                                                return `
+                                                    <td class="text-center py-2 px-1">
+                                                        ${total > 0 ? total : '-'}
+                                                    </td>
+                                                `;
+                                            }).join('')}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Statistics -->
+                        <div class="mb-6">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800">Statistics</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="rounded-lg p-3 border border-gray-200 shadow-sm ${
+                                    gameType === 'stableford' ? 'bg-green-100' : 'bg-blue-100'
+                                }">
+                                    <div class="text-sm font-semibold ${
+                                        gameType === 'stableford' ? 'text-green-800' : 'text-blue-800'
+                                    }">Team Stats</div>
+                                    ${gameType === 'stableford' ? `
+                                        <div class="text-xs mt-1">
+                                            Slams: ${Array.from({length: 18}, (_, i) => holesCompleted[i] && isSlam(i)).filter(Boolean).length}
+                                        </div>
+                                        <div class="text-xs">
+                                            Avg Points/Hole: ${holesCompleted.filter(Boolean).length > 0 ? (getCumulativePoints() / holesCompleted.filter(Boolean).length).toFixed(1) : '0.0'}
+                                        </div>
+                                    ` : `
+                                        <div class="text-xs mt-1">
+                                            Holes Played: ${holesCompleted.filter(Boolean).length}
+                                        </div>
+                                        <div class="text-xs">
+                                            Avg Score/Hole: ${holesCompleted.filter(Boolean).length > 0 ? (getCumulativePoints() / holesCompleted.filter(Boolean).length).toFixed(1) : '0.0'}
+                                        </div>
+                                    `}
+                                </div>
+                                
+                                <div class="bg-yellow-100 rounded-lg p-3 border border-gray-200 shadow-sm">
+                                    <div class="text-sm font-semibold text-yellow-800">Skins Leader</div>
+                                    <div class="text-xs mt-1">
+                                        ${skinsType === 'both' ? (() => {
+                                            const netSkinCounts = activePlayers.map(p => ({
+                                                name: p.name,
+                                                count: getNetSkinCount(p.name)
+                                            }));
+                                            const grossSkinCounts = activePlayers.map(p => ({
+                                                name: p.name,
+                                                count: getGrossSkinCount(p.name)
+                                            }));
+                                            const maxNetSkins = Math.max(...netSkinCounts.map(s => s.count));
+                                            const maxGrossSkins = Math.max(...grossSkinCounts.map(s => s.count));
+                                            const netLeaders = netSkinCounts.filter(s => s.count === maxNetSkins);
+                                            const grossLeaders = grossSkinCounts.filter(s => s.count === maxGrossSkins);
+                                            
+                                            return `
+                                                <div class="text-yellow-600">
+                                                    Net: ${maxNetSkins === 0 ? 'None yet' : 
+                                                         netLeaders.length === 1 ? `${netLeaders[0].name}: ${maxNetSkins}` :
+                                                         `Tied: ${netLeaders.map(l => l.name).join(', ')} (${maxNetSkins})`}
+                                                </div>
+                                                <div class="text-red-600">
+                                                    Gross: ${maxGrossSkins === 0 ? 'None yet' : 
+                                                           grossLeaders.length === 1 ? `${grossLeaders[0].name}: ${maxGrossSkins}` :
+                                                           `Tied: ${grossLeaders.map(l => l.name).join(', ')} (${maxGrossSkins})`}
+                                                </div>
+                                            `;
+                                        })() : (() => {
+                                            const skinCounts = activePlayers.map(p => ({
+                                                name: p.name,
+                                                count: getSkinCount(p.name)
+                                            }));
+                                            const leaders = skinCounts.filter(s => s.count === maxSkins);
+                                            
+                                            if (maxSkins === 0) return 'No skins won yet';
+                                            if (leaders.length === 1) return `${leaders[0].name}: ${maxSkins}`;
+                                            return `Tied: ${leaders.map(l => l.name).join(', ')} (${maxSkins})`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button
+                                onclick="currentPage = 'setup'; window.scrollTo(0, 0); render();"
+                                class="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md"
+                            >
+                                Settings
+                            </button>
+                            <button
+                                onclick="for (let holeIndex = 0; holeIndex < 18; holeIndex++) { calculateSkinWinner(holeIndex); } currentPage = 'scorecard'; window.scrollTo(0, 0); render();"
+                                class="flex-1 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors shadow-md"
+                            >
+                                Back to Scorecard
+                            </button>
+                            <button
+                                onclick="resetGame()"
+                                class="flex-1 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors shadow-md"
+                            >
+                                New Game
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Main render function
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (currentPage === 'setup') {
+                app.innerHTML = renderSetupPage();
+            } else if (currentPage === 'scorecard') {
+                app.innerHTML = renderScorecardPage();
+            } else if (currentPage === 'guide') {
+                app.innerHTML = renderGuidePage();
+            } else if (currentPage === 'summary') {
+                app.innerHTML = renderSummaryPage();
+            }
+        }
+
+        // Add beforeunload warning
+        window.addEventListener('beforeunload', function(event) {
+            if (gameStarted || scores.some(holeScores => holeScores.some(score => score !== null))) {
+                event.preventDefault();
+                event.returnValue = 'Are you sure you want to leave the Oakmont Tuesday Boys Scorecard App? Your game progress may be lost.';
+                return 'Are you sure you want to leave the Oakmont Tuesday Boys Scorecard App? Your game progress may be lost.';
+            }
+        });
+
+        // Initial render
+        render();
+    </script>
+</body>
+</html>
+                                                    }
+
+        function renderGuidePage() {
+            return `
+                <div class="min-h-screen bg-green-50 p-4">
+                    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
+                        <h1 class="text-2xl font-bold text-center mb-6 text-green-800">
+                            Oakmont Tuesday Boys - User Guide
+                        </h1>
+                        
+                        <div class="prose prose-sm max-w-none">
+                            <div class="mb-6">
+                                <p class="text-sm text-gray-600 font-semibold mb-2">General Notes:</p>
+                                <ul class="text-sm text-gray-600 italic mb-2 pl-4 list-disc">
+                                    <li class="mb-1">• You do not need to open Claude to run the app, so you can ignore the top banner.</li>
+                                    <li>• This is a web-based app, so connection to the internet via WiFi or cell data is required. If regular use of the app is expected, user should bookmark the app web address via the Share button on your mobile device.</li>
+                                </ul>
+                                <div class="bg-yellow-100 border-l-4 border-yellow-500 p-3 rounded-r-lg">
+                                    <p class="text-sm text-yellow-800 font-semibold">
+                                        ⚠️ <strong>Important:</strong> When using the app during a game, avoid using your browser's back button or refreshing the page, as this may cause you to lose your scorecard data.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mb-6">
+                                <h3 class="text-lg font-semibold mb-3 text-green-700">Game Setup</h3>
+                                <p class="text-sm mb-2">Default values are indicated in <strong>bold font</strong>:</p>
+                                <ul class="text-sm space-y-2 pl-4 list-disc">
+                                    <li><strong>Choice of game:</strong> <strong>Stableford</strong> (AKA Par Points) or Net Par (AKA Better Ball)</li>
+                                    <li><strong>If Stableford is selected:</strong> <strong>Slams Off</strong> or Slams on. If Slams On is selected, two more buttons appear: <strong>Gross slams</strong> or Net slams. Gross slams award 2 team points if all players get a gross par or better. Net slams award 2 points if all players get a net par or better.</li>
+                                    <li><strong>If Net Par is selected,</strong> the following buttons appear:
+                                        <ul class="pl-4 mt-2 space-y-1 list-disc">
+                                            <li><strong>Front Nine Scores Counted:</strong> This is the number of net better ball scores to be recorded on the front nine holes. Default is <strong>2</strong></li>
+                                            <li><strong>Back Nine Scores Counted:</strong> This is the number of net better ball scores to be recorded on the back nine holes. Default is <strong>2</strong></li>
+                                            <li><strong>All Scores Counted:</strong> Allows selection of any holes for which all players net scores will be counted in the team score. If a particular hole is selected, the all scores counted will override the number of scores selected for that hole's nine. For example, if Front Nine Scores Counted value is 2, and All Scores Counted identifies hole 1, then all of the players' net scores for hole 1 will be counted, not just 2 scores.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Skins:</strong> <strong>Net</strong>, Gross, or both. Will track which player gets the low net, gross or net and gross score on a hole.</li>
+                                    <li><strong>Starting Hole:</strong> Choose the hole where your game is beginning. Default is <strong>Hole 1</strong></li>
+                                    <li><strong>Closest to the Pin Hole:</strong> Choose hole for CTP. Earns +2 points in Stableford and -1 for Net Par. Default is <strong>None</strong></li>
+                                    <li><strong>Long Drive Hole:</strong> Choose hole for Long Drive. Earns +2 points in Stableford and -1 for Net Par. Default is <strong>None</strong></li>
+                                    <li><strong>Player names:</strong> Names must be unique through 5 letters or popup message will appear when Start Game is selected. Must enter at least 1 player.</li>
+                                    <li><strong>HCP:</strong> Course handicap based on player's index and tees that are chosen. The player must determine what to enter based on GHIN handicap calculator. For most players, enter as a positive<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oakmont Tuesday Boys Scorecard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Ensure proper responsive behavior and animations */
+        .transition-colors { transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out; }
+        .hover\:bg-green-600:hover { background-color: #059669; }
+        .hover\:bg-blue-600:hover { background-color: #2563eb; }
+        .hover\:bg-red-600:hover { background-color: #dc2626; }
+        .hover\:bg-orange-600:hover { background-color: #ea580c; }
+        .hover\:bg-gray-600:hover { background-color: #4b5563; }
+        .hover\:bg-gray-300:hover { background-color: #d1d5db; }
+        .hover\:bg-gray-100:hover { background-color: #f3f4f6; }
+        .hover\:bg-gray-200:hover { background-color: #e5e7eb; }
+        .hover\:bg-purple-600:hover { background-color: #9333ea; }
+        .disabled\:bg-gray-300:disabled { background-color: #d1d5db; }
+        .disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+        
+        /* Custom scrollbar for better UX */
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 6px;
+        }
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        
+        /* Enhanced button interactions */
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        /* Smooth animations for state changes */
+        .score-display {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        /* Better focus states */
+        input:focus, select:focus, button:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="bg-green-50 min-h-screen">
+    <div id="app"></div>
+
+    <script>
+        // Global state variables
+        let currentPage = 'setup';
+        let gameType = 'stableford';
+        let slamsOn = false;
+        let slamType = 'gross';
+        let skinsType = 'net';
+        let gameStarted = false;
+        let startingHole = 1;
+        let ctpHole = 0;
+        let longDriveHole = 0;
+        let currentHole = 1;
+        let frontNineCount = 2;
+        let backNineCount = 2;
+        let allScoresHoles = [];
+        let ctpWon = false;
+        let longDriveWon = false;
+        let ctpHack = false;
+        let longDriveHack = false;
+        let duplicateNameError = '';
+
+        let players = [
+            { name: '', handicap: '' },
+            { name: '', handicap: '' },
+            { name: '', handicap: '' },
+            { name: '', handicap: '' },
+            { name: '', handicap: '' }
+        ];
+
+        let scores = Array(18).fill(null).map(() => Array(5).fill(null));
+        let skinWinners = Array(18).fill(null);
+        let grossSkinWinners = Array(18).fill(null);
+        let netSkinWinners = Array(18).fill(null);
+        let holesCompleted = Array(18).fill(false);
+
+        const courseData = {
+            par: [5, 4, 3, 4, 3, 4, 4, 5, 4, 4, 3, 4, 4, 4, 4, 3, 4, 5],
+            handicap: [6, 12, 16, 2, 14, 10, 18, 8, 4, 13, 15, 1, 3, 11, 5, 17, 7, 9]
+        };
+
+        // Utility functions
+        function updatePlayer(index, field, value) {
+            players[index][field] = value;
+            if (field === 'name') {
+                duplicateNameError = '';
+            }
+            render();
+        }
+
+        function startGame() {
+            duplicateNameError = '';
+            
+            const hasPlayers = players.some(p => p.name.trim() !== '');
+            if (!hasPlayers) {
+                duplicateNameError = 'Please enter at least one player name';
+                render();
+                return;
+            }
+            
+            const activePlayerNames = players
+                .filter(p => p.name.trim() !== '')
+                .map(p => p.name.trim().toLowerCase());
+            
+            const duplicates = activePlayerNames.filter((name, index) => 
+                activePlayerNames.indexOf(name) !== index
+            );
+            
+            if (duplicates.length > 0) {
+                duplicateNameError = 'Duplicate player names detected. Please ensure all player names are unique.';
+                render();
+                return;
+            }
+            
+            gameStarted = true;
+            currentHole = startingHole;
+            currentPage = 'scorecard';
+            window.scrollTo(0, 0);
+            render();
+        }
+
+        function getStrokesForHole(holeHandicap, courseHandicap) {
+            if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+                const plusValue = parseInt(courseHandicap.substring(1));
+                const easiestHoles = 18 - plusValue + 1;
+                return holeHandicap >= easiestHoles ? 1 : 0;
+            }
+            
+            const numericHandicap = parseInt(courseHandicap) || 0;
+            if (numericHandicap <= 0) return 0;
+            
+            const baseStrokes = Math.floor(numericHandicap / 18);
+            const extraStrokes = holeHandicap <= (numericHandicap % 18) ? 1 : 0;
+            return baseStrokes + extraStrokes;
+        }
+
+        function getHandicapDescription(holeHandicap, courseHandicap) {
+            if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+                const plusValue = parseInt(courseHandicap.substring(1));
+                const easiestHoles = 18 - plusValue + 1;
+                const addsStroke = holeHandicap >= easiestHoles;
+                
+                if (addsStroke) {
+                    return {
+                        text: "Adds 1 stroke",
+                        color: "bg-red-500",
+                        symbol: "+1"
+                    };
+                } else {
+                    return {
+                        text: "No strokes",
+                        color: "bg-gray-400",
+                        symbol: "0"
+                    };
+                }
+            }
+            
+            const numericHandicap = parseInt(courseHandicap) || 0;
+            if (numericHandicap <= 0) {
+                return {
+                    text: "No strokes",
+                    color: "bg-gray-400",
+                    symbol: "0"
+                };
+            }
+            
+            const baseStrokes = Math.floor(numericHandicap / 18);
+            const extraStrokes = holeHandicap <= (numericHandicap % 18) ? 1 : 0;
+            const totalStrokes = baseStrokes + extraStrokes;
+            
+            if (totalStrokes === 0) {
+                return {
+                    text: "No strokes",
+                    color: "bg-gray-400",
+                    symbol: "0"
+                };
+            } else if (totalStrokes === 1) {
+                return {
+                    text: "Subtracts 1 stroke",
+                    color: "bg-blue-500",
+                    symbol: "-1"
+                };
+            } else {
+                return {
+                    text: `Subtracts ${totalStrokes} strokes`,
+                    color: "bg-blue-500",
+                    symbol: `-${totalStrokes}`
+                };
+            }
+        }
+
+        function calculateNetScore(grossScore, holeHandicap, courseHandicap) {
+            if (!grossScore) return null;
+            
+            if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+                const plusValue = parseInt(courseHandicap.substring(1));
+                const easiestHoles = 18 - plusValue + 1;
+                const addStrokes = holeHandicap >= easiestHoles ? 1 : 0;
+                return grossScore + addStrokes;
+            }
+            
+            if (!courseHandicap || courseHandicap === '') {
+                return grossScore;
+            }
+            
+            const strokes = getStrokesForHole(holeHandicap, courseHandicap);
+            return grossScore - strokes;
+        }
+
+        function calculateStablefordPoints(netScore, par) {
+            if (netScore === null) return 0;
+            const scoreToPar = netScore - par;
+            if (scoreToPar <= -3) return 8;
+            if (scoreToPar === -2) return 5;
+            if (scoreToPar === -1) return 3;
+            if (scoreToPar === 0) return 1;
+            if (scoreToPar === 1) return 0;
+            return -1;
+        }
+
+        function getPlayerScore(holeIndex, playerIndex) {
+            return scores[holeIndex][playerIndex] || courseData.par[holeIndex];
+        }
+
+        function adjustScore(playerIndex, delta) {
+            const holeIndex = currentHole - 1;
+            const par = courseData.par[holeIndex];
+            const currentScore = scores[holeIndex][playerIndex] || par;
+            const newScore = Math.max(1, Math.min(15, currentScore + delta));
+            scores[holeIndex][playerIndex] = newScore;
+            
+            if (!gameStarted) {
+                gameStarted = true;
+            }
+            
+            setTimeout(() => calculateSkinWinner(holeIndex), 0);
+            render();
+        }
+
+        function calculateSkinWinner(holeIndex) {
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            
+            if (activePlayers.length < 2) {
+                return;
+            }
+
+            const hasScores = activePlayers.some(player => {
+                const playerIndex = players.findIndex(p => p.name === player.name);
+                return scores[holeIndex][playerIndex] !== null;
+            });
+
+            const shouldCalculate = holesCompleted[holeIndex] || hasScores;
+            
+            if (!shouldCalculate) {
+                return;
+            }
+
+            const holeHandicap = courseData.handicap[holeIndex];
+            const par = courseData.par[holeIndex];
+            
+            const playerScores = activePlayers.map(player => {
+                const playerIndex = players.findIndex(p => p.name === player.name);
+                const grossScore = scores[holeIndex][playerIndex] || par;
+                const courseHandicap = player.handicap;
+                const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                
+                return {
+                    name: player.name,
+                    grossScore,
+                    netScore
+                };
+            });
+
+            const bestGross = Math.min(...playerScores.map(p => p.grossScore));
+            const grossWinners = playerScores.filter(p => p.grossScore === bestGross);
+            
+            const validNetScores = playerScores.map(p => p.netScore).filter(score => score !== null);
+            if (validNetScores.length > 0) {
+                const bestNet = Math.min(...validNetScores);
+                const netWinners = playerScores.filter(p => p.netScore !== null && p.netScore === bestNet);
+                
+                if (netWinners.length === 1) {
+                    netSkinWinners[holeIndex] = netWinners[0].name;
+                } else {
+                    netSkinWinners[holeIndex] = 'Tie';
+                }
+            }
+            
+            if (grossWinners.length === 1) {
+                grossSkinWinners[holeIndex] = grossWinners[0].name;
+            } else {
+                grossSkinWinners[holeIndex] = 'Tie';
+            }
+            
+            if (skinsType === 'gross') {
+                skinWinners[holeIndex] = grossSkinWinners[holeIndex];
+            } else if (skinsType === 'net') {
+                skinWinners[holeIndex] = netSkinWinners[holeIndex];
+            } else if (skinsType === 'both') {
+                skinWinners[holeIndex] = netSkinWinners[holeIndex];
+            }
+        }
+
+        function getHolePoints(holeIndex) {
+            if (gameType === 'stableford') {
+                let holePoints = 0;
+                const par = courseData.par[holeIndex];
+                const holeHandicap = courseData.handicap[holeIndex];
+                
+                players.forEach((player, playerIndex) => {
+                    if (player.name) {
+                        const grossScore = scores[holeIndex][playerIndex] || par;
+                        const courseHandicap = player.handicap;
+                        const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                        const points = calculateStablefordPoints(netScore, par);
+                        
+                        if (netScore !== null) {
+                            holePoints += points;
+                        }
+                    }
+                });
+                
+                // Add slam bonus if applicable
+                if (slamsOn) {
+                    const activePlayers = players.filter(p => p.name.trim() !== '');
+                    if (activePlayers.length > 0) {
+                        if (slamType === 'gross') {
+                            const allParOrBetter = activePlayers.every((player) => {
+                                const playerIndex = players.findIndex(p => p.name === player.name);
+                                const score = scores[holeIndex][playerIndex] || par;
+                                return score <= par;
+                            });
+                            if (allParOrBetter) {
+                                holePoints += 2;
+                            }
+                        } else {
+                            const allNetParOrBetter = activePlayers.every((player) => {
+                                const playerIndex = players.findIndex(p => p.name === player.name);
+                                const grossScore = scores[holeIndex][playerIndex] || par;
+                                const courseHandicap = player.handicap;
+                                const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                                return netScore <= par;
+                            });
+                            if (allNetParOrBetter) {
+                                holePoints += 2;
+                            }
+                        }
+                    }
+                }
+                
+                if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpWon) {
+                    holePoints += 2;
+                }
+                
+                if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveWon) {
+                    holePoints += 2;
+                }
+                
+                if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpHack) {
+                    holePoints -= 2;
+                }
+                
+                if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveHack) {
+                    holePoints -= 2;
+                }
+                
+                return holePoints;
+            } else if (gameType === 'netpar') {
+                return getNetParHoleScore(holeIndex);
+            }
+            
+            return 0;
+        }
+
+        function getNetParHoleScore(holeIndex) {
+            const par = courseData.par[holeIndex];
+            const holeHandicap = courseData.handicap[holeIndex];
+            const holeNumber = holeIndex + 1;
+            
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            const netScores = activePlayers.map(player => {
+                const playerIndex = players.findIndex(p => p.name === player.name);
+                const grossScore = scores[holeIndex][playerIndex] || par;
+                const courseHandicap = player.handicap;
+                const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                return netScore - par;
+            }).filter(score => score !== null);
+            
+            if (netScores.length === 0) return 0;
+            
+            let scoresToCount;
+            
+            if (allScoresHoles.includes(holeNumber)) {
+                scoresToCount = netScores.length;
+            } else if (holeNumber <= 9) {
+                scoresToCount = Math.min(frontNineCount, netScores.length);
+            } else {
+                scoresToCount = Math.min(backNineCount, netScores.length);
+            }
+            
+            const sortedScores = [...netScores].sort((a, b) => a - b);
+            const countedScores = sortedScores.slice(0, scoresToCount);
+            
+            let holeScore = countedScores.reduce((sum, score) => sum + score, 0);
+            
+            if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpWon) {
+                holeScore -= 1;
+            }
+            
+            if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveWon) {
+                holeScore -= 1;
+            }
+            
+            if (ctpHole > 0 && holeIndex + 1 === ctpHole && ctpHack) {
+                holeScore += 1;
+            }
+            
+            if (longDriveHole > 0 && holeIndex + 1 === longDriveHole && longDriveHack) {
+                holeScore += 1;
+            }
+            
+            return holeScore;
+        }
+
+        function getCumulativePoints() {
+            let total = 0;
+            for (let i = 0; i < 18; i++) {
+                if (holesCompleted[i]) {
+                    total += getHolePoints(i);
+                }
+            }
+            return total;
+        }
+
+        function isSlam(holeIndex) {
+            if (!slamsOn || gameType !== 'stableford') return false;
+            
+            const par = courseData.par[holeIndex];
+            const holeHandicap = courseData.handicap[holeIndex];
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            
+            if (activePlayers.length === 0) return false;
+            
+            if (slamType === 'gross') {
+                return activePlayers.every((player) => {
+                    const playerIndex = players.findIndex(p => p.name === player.name);
+                    const score = scores[holeIndex][playerIndex] || par;
+                    return score <= par;
+                });
+            } else {
+                return activePlayers.every((player) => {
+                    const playerIndex = players.findIndex(p => p.name === player.name);
+                    const grossScore = scores[holeIndex][playerIndex] || par;
+                    const courseHandicap = player.handicap;
+                    const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                    return netScore <= par;
+                });
+            }
+        }
+
+        function completeHole() {
+            const holeIndex = currentHole - 1;
+            const par = courseData.par[holeIndex];
+            
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            activePlayers.forEach(player => {
+                const playerIndex = players.findIndex(p => p.name === player.name);
+                if (scores[holeIndex][playerIndex] === null) {
+                    scores[holeIndex][playerIndex] = par;
+                }
+            });
+            
+            holesCompleted[holeIndex] = true;
+            
+            setTimeout(() => {
+                calculateSkinWinner(holeIndex);
+            }, 10);
+            
+            const allHolesComplete = holesCompleted.every(completed => completed);
+            
+            if (allHolesComplete) {
+                setTimeout(() => {
+                    for (let holeIdx = 0; holeIdx < 18; holeIdx++) {
+                        calculateSkinWinner(holeIdx);
+                    }
+                    currentPage = 'summary';
+                    window.scrollTo(0, 0);
+                    render();
+                }, 100);
+            } else {
+                if (currentHole === 18) {
+                    if (startingHole !== 1) {
+                        currentHole = 1;
+                    }
+                } else {
+                    currentHole = currentHole + 1;
+                }
+                render();
+            }
+        }
+
+        function getPlayerTotalScore(playerIndex) {
+            let total = 0;
+            let hasCompletedHoles = false;
+            for (let i = 0; i < 18; i++) {
+                if (holesCompleted[i]) {
+                    const score = scores[i][playerIndex];
+                    if (score) {
+                        total += score;
+                    } else {
+                        total += courseData.par[i];
+                    }
+                    hasCompletedHoles = true;
+                }
+            }
+            return hasCompletedHoles ? total : 0;
+        }
+
+        function getPlayerNetTotal(playerIndex) {
+            const player = players[playerIndex];
+            const courseHandicap = player.handicap;
+            const totalScore = getPlayerTotalScore(playerIndex);
+            
+            if (totalScore === 0) return 0;
+            
+            if (typeof courseHandicap === 'string' && courseHandicap.startsWith('+')) {
+                const plusValue = parseInt(courseHandicap.substring(1));
+                const completedHolesCount = holesCompleted.filter(Boolean).length;
+                const adjustedHandicap = Math.round((plusValue * completedHolesCount) / 18);
+                return totalScore + adjustedHandicap;
+            }
+            
+            const numericHandicap = parseInt(courseHandicap) || 0;
+            const completedHolesCount = holesCompleted.filter(Boolean).length;
+            const adjustedHandicap = Math.round((numericHandicap * completedHolesCount) / 18);
+            
+            return totalScore - adjustedHandicap;
+        }
+
+        function getPlayerStablefordTotal(playerIndex) {
+            if (gameType !== 'stableford') return 0;
+            
+            let total = 0;
+            const player = players[playerIndex];
+            const courseHandicap = player.handicap;
+            
+            for (let i = 0; i < 18; i++) {
+                if (holesCompleted[i]) {
+                    const grossScore = scores[i][playerIndex];
+                    if (grossScore) {
+                        const holeHandicap = courseData.handicap[i];
+                        const par = courseData.par[i];
+                        const netScore = calculateNetScore(grossScore, holeHandicap, courseHandicap);
+                        const points = calculateStablefordPoints(netScore, par);
+                        total += points;
+                    } else {
+                        const holeHandicap = courseData.handicap[i];
+                        const par = courseData.par[i];
+                        const netScore = calculateNetScore(par, holeHandicap, courseHandicap);
+                        const points = calculateStablefordPoints(netScore, par);
+                        total += points;
+                    }
+                }
+            }
+            
+            return total;
+        }
+
+        function getSkinCount(playerName) {
+            return skinWinners.filter((winner, index) => 
+                winner === playerName && holesCompleted[index]
+            ).length;
+        }
+
+        function getGrossSkinCount(playerName) {
+            return grossSkinWinners.filter((winner, index) => 
+                winner === playerName && holesCompleted[index]
+            ).length;
+        }
+
+        function getNetSkinCount(playerName) {
+            return netSkinWinners.filter((winner, index) => 
+                winner === playerName && holesCompleted[index]
+            ).length;
+        }
+
+        function resetGame() {
+            currentPage = 'setup';
+            gameType = 'stableford';
+            slamsOn = false;
+            slamType = 'gross';
+            skinsType = 'net';
+            gameStarted = false;
+            startingHole = 1;
+            ctpHole = 0;
+            longDriveHole = 0;
+            currentHole = 1;
+            frontNineCount = 2;
+            backNineCount = 2;
+            allScoresHoles = [];
+            players = [
+                { name: '', handicap: '' },
+                { name: '', handicap: '' },
+                { name: '', handicap: '' },
+                { name: '', handicap: '' },
+                { name: '', handicap: '' }
+            ];
+            scores = Array(18).fill(null).map(() => Array(5).fill(null));
+            ctpWon = false;
+            longDriveWon = false;
+            ctpHack = false;
+            longDriveHack = false;
+            skinWinners = Array(18).fill(null);
+            grossSkinWinners = Array(18).fill(null);
+            netSkinWinners = Array(18).fill(null);
+            holesCompleted = Array(18).fill(false);
+            duplicateNameError = '';
+            window.scrollTo(0, 0);
+            render();
+        }
+
+        function toggleAllScoresHole(holeNumber) {
+            if (allScoresHoles.includes(holeNumber)) {
+                allScoresHoles = allScoresHoles.filter(h => h !== holeNumber);
+            } else {
+                allScoresHoles = [...allScoresHoles, holeNumber].sort((a, b) => a - b);
+            }
+            render();
+        }
+
+        function applySettings() {
+            currentPage = 'scorecard';
+            window.scrollTo(0, 0);
+            render();
+        }
+
+        // Render functions
+        function renderSetupPage() {
+            return `
+                <div class="min-h-screen bg-green-50 p-4">
+                    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+                        <h1 class="text-2xl font-bold text-center mb-2 text-green-800">
+                            Oakmont Tuesday Boys
+                        </h1>
+                        <div class="text-center mb-6 text-green-800 text-sm">
+                            Version 1.0
+                        </div>
+                        <h2 class="text-xl font-semibold text-center mb-6">
+                            Game Setup
+                        </h2>
+
+                        <!-- User Guide Selection -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">User Guide:</label>
+                            <button
+                                onclick="currentPage = 'guide'; window.scrollTo(0, 0); render();"
+                                class="w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors bg-blue-500 text-white hover:bg-blue-600"
+                            >
+                                Display Guide
+                            </button>
+                        </div>
+
+                        <!-- Choice of Game -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">Choice of Game:</label>
+                            <div class="flex bg-gray-200 rounded-lg p-1">
+                                <button
+                                    onclick="gameType = 'stableford'; render();"
+                                    class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                        gameType === 'stableford' 
+                                            ? 'bg-green-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Stableford
+                                </button>
+                                <button
+                                    onclick="gameType = 'netpar'; render();"
+                                    class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                        gameType === 'netpar' 
+                                            ? 'bg-blue-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Net Par
+                                </button>
+                            </div>
+                        </div>
+
+                        ${gameType === 'stableford' ? `
+                        <!-- Slams Toggle -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">Slams:</label>
+                            <div class="flex bg-gray-200 rounded-lg p-1 mb-3">
+                                <button
+                                    onclick="slamsOn = false; render();"
+                                    class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                        !slamsOn 
+                                            ? 'bg-red-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Slams Off
+                                </button>
+                                <button
+                                    onclick="slamsOn = true; render();"
+                                    class="flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                                        slamsOn 
+                                            ? 'bg-green-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Slams On
+                                </button>
+                            </div>
+                            
+                            ${slamsOn ? `
+                            <!-- Slam Type Selection -->
+                            <div>
+                                <label class="block text-xs font-medium mb-2 text-gray-600">Slam Type:</label>
+                                <div class="flex bg-gray-100 rounded-lg p-1">
+                                    <button
+                                        onclick="slamType = 'gross'; render();"
+                                        class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                                            slamType === 'gross' 
+                                                ? 'bg-orange-500 text-white' 
+                                                : 'text-gray-700 hover:bg-gray-200'
+                                        }"
+                                    >
+                                        Gross Slams
+                                    </button>
+                                    <button
+                                        onclick="slamType = 'net'; render();"
+                                        class="flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                                            slamType === 'net' 
+                                                ? 'bg-blue-500 text-white' 
+                                                : 'text-gray-700 hover:bg-gray-200'
+                                        }"
+                                    >
+                                        Net Slams
+                                    </button>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+
+                        ${gameType === 'netpar' ? `
+                        <!-- Net Par Settings -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">Net Par Settings:</label>
+                            
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium mb-1 text-gray-600">Front Nine Scores Counted (1-5):</label>
+                                <select
+                                    onchange="frontNineCount = parseInt(this.value); render();"
+                                    class="w-full p-2 border rounded-md bg-white text-sm"
+                                >
+                                    ${[1, 2, 3, 4, 5].map(num => 
+                                        `<option value="${num}" ${frontNineCount === num ? 'selected' : ''}>${num}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium mb-1 text-gray-600">Back Nine Scores Counted (1-5):</label>
+                                <select
+                                    onchange="backNineCount = parseInt(this.value); render();"
+                                    class="w-full p-2 border rounded-md bg-white text-sm"
+                                >
+                                    ${[1, 2, 3, 4, 5].map(num => 
+                                        `<option value="${num}" ${backNineCount === num ? 'selected' : ''}>${num}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium mb-1 text-gray-600">All Scores Counted (select holes):</label>
+                                <div class="bg-gray-50 border rounded-md p-2 max-h-32 overflow-y-auto">
+                                    <div class="grid grid-cols-6 gap-1">
+                                        ${Array.from({length: 18}, (_, i) => {
+                                            const holeNumber = i + 1;
+                                            const isSelected = allScoresHoles.includes(holeNumber);
+                                            return `
+                                                <button
+                                                    onclick="toggleAllScoresHole(${holeNumber});"
+                                                    class="text-xs py-1 px-2 rounded border transition-colors ${
+                                                        isSelected 
+                                                            ? 'bg-blue-500 text-white border-blue-500' 
+                                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                                                    }"
+                                                >
+                                                    ${holeNumber}
+                                                </button>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                    ${allScoresHoles.length > 0 ? `
+                                        <div class="mt-2 text-xs text-blue-600">
+                                            Selected: ${allScoresHoles.join(', ')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- Skins Type -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">Skins:</label>
+                            <div class="flex bg-gray-200 rounded-lg p-1">
+                                <button
+                                    onclick="skinsType = 'net'; render();"
+                                    class="flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                                        skinsType === 'net' 
+                                            ? 'bg-yellow-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Net
+                                </button>
+                                <button
+                                    onclick="skinsType = 'gross'; render();"
+                                    class="flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                                        skinsType === 'gross' 
+                                            ? 'bg-green-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Gross
+                                </button>
+                                <button
+                                    onclick="skinsType = 'both'; render();"
+                                    class="flex-1 py-1 px-2 rounded-md text-xs font-medium transition-colors ${
+                                        skinsType === 'both' 
+                                            ? 'bg-blue-500 text-white' 
+                                            : 'text-gray-700 hover:bg-gray-300'
+                                    }"
+                                >
+                                    Both
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Starting Hole -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-2">Starting Hole:</label>
+                            <select
+                                onchange="startingHole = parseInt(this.value); render();"
+                                class="w-full p-2 border rounded-md bg-white"
+                            >
+                                ${Array.from({length: 18}, (_, i) => 
+                                    `<option value="${i+1}" ${startingHole === i+1 ? 'selected' : ''}>Hole ${i+1}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+
+                        <!-- Closest to Pin Hole -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-2">Closest to the Pin Hole:</label>
+                            <select
+                                onchange="ctpHole = parseInt(this.value); render();"
+                                class="w-full p-2 border rounded-md bg-white"
+                            >
+                                <option value="0" ${ctpHole === 0 ? 'selected' : ''}>None</option>
+                                ${Array.from({length: 18}, (_, i) => 
+                                    `<option value="${i+1}" ${ctpHole === i+1 ? 'selected' : ''}>Hole ${i+1}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+
+                        <!-- Long Drive Hole -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-2">Long Drive Hole:</label>
+                            <select
+                                onchange="longDriveHole = parseInt(this.value); render();"
+                                class="w-full p-2 border rounded-md bg-white"
+                            >
+                                <option value="0" ${longDriveHole === 0 ? 'selected' : ''}>None</option>
+                                ${Array.from({length: 18}, (_, i) => 
+                                    `<option value="${i+1}" ${longDriveHole === i+1 ? 'selected' : ''}>Hole ${i+1}</option>`
+                                ).join('')}
+                            </select>
+                        </div>
+
+                        <!-- Player Setup -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-semibold mb-3">Players:</label>
+                            
+                            ${duplicateNameError ? `
+                                <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+                                    ⚠️ ${duplicateNameError}
+                                </div>
+                            ` : ''}
+                            
+                            ${players.map((player, index) => `
+                                <div class="mb-3">
+                                    <div class="text-xs font-medium mb-1 text-gray-600">
+                                        Player ${index + 1}
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Name"
+                                            value="${player.name}"
+                                            oninput="updatePlayer(${index}, 'name', this.value);"
+                                            class="flex-1 p-2 border rounded-md text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            inputmode="tel"
+                                            placeholder="HCP"
+                                            value="${player.handicap}"
+                                            oninput="updatePlayer(${index}, 'handicap', this.value);"
+                                            class="w-20 p-2 border rounded-md text-sm text-center focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                        />
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <button
+                            onclick="${gameStarted ? 'applySettings()' : 'startGame()'}"
+                            class="w-full py-3 bg-green-600 text-white font-bold rounded-lg text-lg hover:bg-green-700 transition-colors mb-3 shadow-md"
+                        >
+                            ${gameStarted ? 'Apply Settings & Continue' : 'Start Game'}
+                        </button>
+
+                        ${!gameStarted && (scores.some(holeScores => holeScores.some(score => score !== null)) || holesCompleted.some(completed => completed)) ? `
+                            <button
+                                onclick="applySettings()"
+                                class="w-full py-3 bg-blue-600 text-white font-bold rounded-lg text-lg hover:bg-blue-700 transition-colors shadow-md"
+                            >
+                                Apply Settings & Continue
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderScorecardPage() {
+            const holeIndex = currentHole - 1;
+            const par = courseData.par[holeIndex];
+            const holeHandicap = courseData.handicap[holeIndex];
+            const activePlayers = players.filter(p => p.name.trim() !== '');
+            
+            return `
+                <div class="min-h-screen bg-green-50 p-4">
+                    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-4">
+                        <div class="text-center mb-4">
+                            <h1 class="text-lg font-bold text-green-800">Oakmont Tuesday Boys</h1>
+                            <h2 class="text-md font-semibold">Score Entry</h2>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-semibold mb-2">Select Hole:</label>
+                            <select
+                                onchange="currentHole = parseInt(this.value); render();"
+                                class="w-full p-3 border-2 border-green-500 rounded-lg bg-white text-lg font-semibold focus:ring-2 focus:ring-green-600"
+                            >
+                                ${Array.from({length: 18}, (_, i) => `
+                                    <option value="${i+1}" ${currentHole === i+1 ? 'selected' : ''}>
+                                        Hole ${i+1} (Par ${courseData.par[i]})
+                                    </option>
+                                `).join('')}
+                            </select>
+                        </div>
+
+                        <div class="bg-green-100 rounded-lg p-3 mb-4 text-center border border-green-300">
+                            <div class="text-2xl font-bold text-green-800">Hole ${currentHole}</div>
+                            <div class="text-lg text-green-700">Par ${par} • Handicap ${holeHandicap}</div>
+                            <div class="text-base font-semibold text-green-700 mt-2">
+                                Current Team Score: ${gameType === 'stableford' ? getCumulativePoints() : 
+                                (getCumulativePoints() >= 0 ? `+${getCumulativePoints()}` : getCumulativePoints())}
+                            </div>
+                            <div class="text-sm text-gray-600 mt-1">
+                                Holes Completed: ${holesCompleted.filter(Boolean).length} / 18
+                            </div>
+                            ${gameType === 'netpar' && allScoresHoles.includes(currentHole) ? `
+                                <div class="text-sm text-purple-600 font-semibold mt-1 bg-purple-100 rounded px-2 py-1 inline-block">📊 All Scores Count</div>
+                            ` : ''}
+                            ${currentHole === ctpHole && ctpHole > 0 ? `
+                                <div class="text-lg text-blue-600 font-bold mt-1 bg-blue-100 rounded px-2 py-1 inline-block">
+                                    <span class="text-2xl">🎯</span> Closest to Pin
+                                </div>
+                            ` : ''}
+                            ${currentHole === longDriveHole && longDriveHole > 0 ? `
+                                <div class="text-lg text-purple-600 font-bold mt-1 bg-purple-100 rounded px-2 py-1 inline-block">
+                                    <span class="text-2xl">🏌️</span> Long Drive
+                                </div>
+                            ` : ''}
+                            ${skinWinners[currentHole - 1] && holesCompleted[currentHole - 1] ? `
+                                <div class="text-sm text-yellow-600 font-semibold mt-1 bg-yellow-100 rounded px-2 py-1 inline-block">
+                                    🏆 Skin Winner: ${skinWinners[currentHole - 1]}
+                                </div>
+                            ` : ''}
+                            ${holesCompleted[currentHole - 1] ? `
+                                <div class="text-sm text-green-600 font-semibold mt-1 bg-green-200 rounded px-2 py-1 inline-block">
+                                    ✅ Hole Complete
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="space-y-4 mb-6">
+                            ${activePlayers.map((player) => {
+                                const actualPlayerIndex = players.findIndex(p => p.name === player.name);
+                                const currentScore = getPlayerScore(holeIndex, actualPlayerIndex);
+                                const courseHandicap = player.handicap;
+                                const handicapInfo = getHandicapDescription(holeHandicap, courseHandicap);
+                                
+                                return `
+                                    <div class="border-2 border-gray-200 rounded-lg p-4 shadow-sm bg-gray-50">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <div>
+                                                <div class="font-semibold text-lg text-gray-800">${player.name}</div>
+                                                <div class="text-sm text-gray-600">
+                                                    HCP: ${player.handicap || '0'}
+                                                </div>
+                                                ${courseHandicap && courseHandicap !== '0' ? `
+                                                    <div class="mt-1">
+                                                        <span class="text-white px-2 py-1 rounded-full text-xs font-medium ${handicapInfo.color}">
+                                                            ${handicapInfo.symbol}
+                                                        </span>
+                                                        <div class="text-xs text-gray-500 mt-1">
+                                                            ${handicapInfo.text}
+                                                        </div>
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center justify-center gap-4">
+                                            <button
+                                                onclick="adjustScore(${actualPlayerIndex}, -1)"
+                                                ${currentScore <= 1 ? 'disabled' : ''}
+                                                class="w-12 h-12 bg-red-500 text-white text-2xl font-bold rounded-full hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center transition-colors shadow-md score-display"
+                                            >
+                                                -
+                                            </button>
+                                            
+                                            <div class="flex flex-col items-center">
+                                                <div class="text-3xl font-bold text-green-800 bg-green-100 w-16 h-16 rounded-full flex items-center justify-center border-2 border-green-500 shadow-lg score-display">
+                                                    ${currentScore}
+                                                </div>
+                                                <div class="text-xs text-gray-500 mt-1 font-medium">
+                                                    ${currentScore === par ? 'Par' : 
+                                                     currentScore < par ? `${par - currentScore} under` :
+                                                     `${currentScore - par} over`}
+                                                </div>
+                                            </div>
+                                            
+                                            <button
+                                                onclick="adjustScore(${actualPlayerIndex}, 1)"
+                                                ${currentScore >= 15 ? 'disabled' : ''}
+                                                class="w-12 h-12 bg-green-500 text-white text-2xl font-bold rounded-full hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center transition-colors shadow-md score-display"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        ${(currentHole === ctpHole || currentHole === longDriveHole) && (ctpHole > 0 || longDriveHole > 0) ? `
+                            <div class="mb-4 space-y-2">
+                                ${currentHole === ctpHole && ctpHole > 0 ? `
+                                    <div class="space-y-2">
+                                        <button
+                                            onclick="ctpWon = !ctpWon; if (!ctpWon) ctpHack = false; render();"
+                                            class="w-full py-4 rounded-lg font-bold text-lg transition-colors shadow-md ${
+                                                ctpWon 
+                                                    ? 'bg-blue-500 text-white' 
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            }"
+                                        >
+                                            <span class="text-2xl">🎯</span> Closest to Pin ${ctpWon ? 
+                                                (gameType === 'stableford' ? '(+2 Won!)' : '(-1 Won!)') : 
+                                                (gameType === 'stableford' ? '(+2 points)' : '(-1 stroke)')
+                                            }
+                                        </button>
+                                        <button
+                                            onclick="ctpHack = !ctpHack; if (!ctpHack) ctpWon = false; render();"
+                                            class="w-full py-3 rounded-lg font-bold text-lg transition-colors shadow-md ${
+                                                ctpHack 
+                                                    ? 'bg-red-500 text-white' 
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            }"
+                                        >
+                                            <span class="text-2xl">💀</span> Hack ${ctpHack ? 
+                                                (gameType === 'stableford' ? '(-2 Penalty!)' : '(+1 Penalty!)') : 
+                                                (gameType === 'stableford' ? '(-2 points)' : '(+1 stroke)')
+                                            }
+                                        </button>
+                                    </div>
+                                ` : ''}
+                                ${currentHole === longDriveHole && longDriveHole > 0 ? `
+                                    <div class="space-y-2">
+                                        <button
+                                            onclick="longDriveWon = !longDriveWon; if (!longDriveWon) longDriveHack = false; render();"
+                                            class="w-full py-4 rounded-lg font-bold text-lg transition-colors shadow-md ${
+                                                longDriveWon 
+                                                    ? 'bg-purple-500 text-white' 
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            }"
+                                        >
+                                            <span class="text-2xl">🏌️</span> Long Drive ${longDriveWon ? 
+                                                (gameType === 'stableford' ? '(+2 Won!)' : '(-1 Won!)') : 
+                                                (gameType === 'stableford' ? '(+2 points)' : '(-1 stroke)')
+                                            }
+                                        </button>
+                                        <button
+                                            onclick="longDriveHack = !longDriveHack; if (!longDriveHack) longDriveWon = false; render();"
+                                            class="w-full py-3 rounded-lg font-bold text-lg transition-colors shadow-md ${
+                                                longDriveHack 
+                                                    ? 'bg-red-500 text-white' 
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            }"
+                                        >
+                                            <span class="text-2xl">💀</span> Hack ${longDriveHack ? 
+                                                (gameType === 'stableford' ? '(-2 Penalty!)' : '(+1 Penalty!)') : 
+                                                (gameType === 'stableford' ? '(-2 points)' : '(+1 stroke)')
+                                            }
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
+
+                        <div class="mb-4">
+                            <button
+                                onclick="completeHole()"
+                                class="w-full py-4 rounded-lg font-bold text-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 shadow-lg"
+                            >
+                                ${(() => {
+                                    const allOtherHolesComplete = holesCompleted.filter((completed, index) => index !== currentHole - 1).every(completed => completed);
+                                    const currentHoleComplete = holesCompleted[currentHole - 1];
+                                    
+                                    if (allOtherHolesComplete && !currentHoleComplete) {
+                                        return '🏁 Complete Round & Go To Summary';
+                                    } else if (currentHoleComplete) {
+                                        return '💾 Save & Continue';
+                                    } else {
+                                        return '🏌️ Complete Hole & Continue';
+                                    }
+                                })()}
+                            </button>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button
+                                onclick="currentPage = 'setup'; window.scrollTo(0, 0); render();"
+                                class="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-lg hover:bg-orange-600 transition-colors shadow-md"
+                            >
+                                Settings
+                            </button>
+                            <button
+                                onclick="resetGame()"
+                                class="flex-1 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors shadow-md"
+                            >
+                                New Game
+                            </button>
+                            <button
+                                onclick="for (let holeIndex = 0; holeIndex < 18; holeIndex++) { calculateSkinWinner(holeIndex); } currentPage = 'summary'; window.scrollTo(0, 0); render();"
+                                class="flex-1 py-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition-colors shadow-md"
+                            >
+                                View Summary
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
